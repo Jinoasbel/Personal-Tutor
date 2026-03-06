@@ -4,20 +4,20 @@ ui/main_window.py
 Root application window.
 
 Responsibilities:
-    - Hosts the sidebar + a QStackedWidget of pages.
+    - Hosts the sidebar + QStackedWidget of pages.
     - Owns the floating hamburger overlay.
-    - Owns the shared app_state dict passed to all pages.
-    - Owns the OCREngine instance (stored in app_state).
-    - Routes navigation signals from the sidebar to page switches.
-    - Handles responsive resize (sidebar width + font scaling).
+    - Owns shared app_state (passed to all pages).
+    - Routes navigation signals from the sidebar.
+    - Handles responsive resize.
 
-It does NOT contain any page-specific logic — that lives in each page.
+Upload logic lives entirely in UploadPage and UploadTypeDialog.
+The sidebar no longer has an upload button.
 """
 
 import sys
 from PySide6.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QHBoxLayout,
-    QPushButton, QStackedWidget, QFileDialog
+    QMainWindow, QWidget, QHBoxLayout,
+    QPushButton, QStackedWidget
 )
 from PySide6.QtCore import Qt, QSize, QRect
 from PySide6.QtGui import QFont, QResizeEvent
@@ -38,14 +38,14 @@ class TutorApp(QMainWindow):
         self.setWindowTitle(cfg.WINDOW_TITLE)
         self.resize(cfg.WINDOW_WIDTH, cfg.WINDOW_HEIGHT)
 
-        # ── Shared state passed to every page ─────────────────────────────────
+        # ── Shared state ──────────────────────────────────────────────────────
         self._app_state: dict = {
-            "ocr_engine":           OCREngine(),
-            "last_extracted_text":  "",
-            "study_plans":          [],
-            "lessons":              [],
-            "questions":            [],
-            "active_study_plan":    None,
+            "ocr_engine":          OCREngine(),
+            "last_extracted_text": "",
+            "study_plans":         [],
+            "lessons":             [],
+            "questions":           [],
+            "active_study_plan":   None,
         }
 
         # ── Central widget ────────────────────────────────────────────────────
@@ -61,7 +61,6 @@ class TutorApp(QMainWindow):
         self._sidebar = SidebarWidget(parent=self._central)
         self._sidebar.setFixedWidth(int(cfg.WINDOW_WIDTH * cfg.SIDEBAR_FRACTION))
         self._sidebar.navigateTo.connect(self._navigate_to)
-        self._sidebar.uploadRequested.connect(self._on_upload_requested)
         root.addWidget(self._sidebar)
 
         # ── Page stack ────────────────────────────────────────────────────────
@@ -69,8 +68,7 @@ class TutorApp(QMainWindow):
         self._stack.setStyleSheet(cfg.page_style(cfg.COLOR_PRIMARY_BG))
         root.addWidget(self._stack, stretch=1)
 
-        # Build all pages and register them
-        self._pages: dict[str, object] = {}
+        self._pages: dict[str, QWidget] = {}
         self._register_page(cfg.PAGE_UPLOAD,      UploadPage(self._app_state))
         self._register_page(cfg.PAGE_STUDY_PLANS, StudyPlansPage(self._app_state))
         self._register_page(cfg.PAGE_LESSONS,     LessonsPage(self._app_state))
@@ -85,10 +83,9 @@ class TutorApp(QMainWindow):
         self._hamburger.clicked.connect(self._toggle_sidebar)
         self._place_hamburger()
 
-        # Start on upload page
         self._navigate_to(cfg.PAGE_UPLOAD)
 
-    # ── Page registration ─────────────────────────────────────────────────────
+    # ── Registration ─────────────────────────────────────────────────────────
 
     def _register_page(self, key: str, page: QWidget):
         self._pages[key] = page
@@ -104,26 +101,12 @@ class TutorApp(QMainWindow):
         page.on_enter()
         self._sidebar.set_active(page_key)
 
-    # ── Upload shortcut ───────────────────────────────────────────────────────
-
-    def _on_upload_requested(self):
-        """Sidebar upload button — open dialog and navigate to upload page."""
-        path, _ = QFileDialog.getOpenFileName(
-            self, cfg.DIALOG_TITLE, "", cfg.DIALOG_FILTER
-        )
-        if path:
-            self._navigate_to(cfg.PAGE_UPLOAD)
-            upload_page: UploadPage = self._pages[cfg.PAGE_UPLOAD]
-            upload_page._start_ocr(path)
-
     # ── Hamburger ─────────────────────────────────────────────────────────────
 
     def _place_hamburger(self):
         self._hamburger.setGeometry(QRect(
-            cfg.HAMBURGER_OFFSET_X,
-            cfg.HAMBURGER_OFFSET_Y,
-            cfg.HAMBURGER_BTN_SIZE,
-            cfg.HAMBURGER_BTN_SIZE
+            cfg.HAMBURGER_OFFSET_X, cfg.HAMBURGER_OFFSET_Y,
+            cfg.HAMBURGER_BTN_SIZE, cfg.HAMBURGER_BTN_SIZE
         ))
         self._hamburger.raise_()
 

@@ -1,131 +1,126 @@
 """
-ui/sidebar.py
--------------
-Collapsible sidebar with navigation buttons and an upload shortcut.
-
-The hamburger button is NOT here — it lives as a floating overlay on
-TutorApp (main_window.py) so it remains visible when sidebar collapses.
-
-Emits:
-    navigateTo(page_key: str)  — when a nav button is clicked
-    uploadRequested()          — when the Upload button is clicked
+sidebar.py — Collapsible sidebar with hamburger toggle and navigation buttons.
+Matches the Main_UI.pdf design: hamburger top-left, nav buttons stacked below.
 """
 
-from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QSizePolicy
-)
+from __future__ import annotations
+
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QFont
+from PySide6.QtWidgets import (
+    QButtonGroup, QPushButton, QSizePolicy,
+    QSpacerItem, QVBoxLayout, QWidget,
+)
 
-import app_config as cfg
+from pt_theme import Colors, Fonts, Strings, Spacing, Layout, Radius
 
 
-class SidebarWidget(QWidget):
+_NAV_ITEMS = [
+    ("extracted", Strings.NAV_EXTRACTED, "›", Strings.TIP_EXTRACTED),
+    ("summarize", Strings.NAV_SUMMARIZE, "›", Strings.TIP_SUMMARIZE),
+    ("audio",     Strings.NAV_AUDIO,     "›", Strings.TIP_AUDIO),
+    ("ask",       Strings.NAV_ASK,       "›", Strings.TIP_ASK),
+]
 
-    navigateTo      = Signal(str)   # page_key
-    uploadRequested = Signal()
 
-    def __init__(self, parent=None):
+class Sidebar(QWidget):
+    """
+    Left navigation sidebar.
+
+    Signals:
+        panel_changed(str panel_id)
+    """
+
+    panel_changed = Signal(str)
+
+    def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self.expanded = True
-        self._nav_buttons: dict[str, QPushButton] = {}   # page_key → button
-        self._active_key: str = cfg.PAGE_UPLOAD
+        self.setObjectName("Sidebar")
+        self.setFixedWidth(Layout.SIDEBAR_W_EXPANDED)
+        self._build_ui()
 
-        self.setStyleSheet(cfg.sidebar_style(cfg.COLOR_SECONDARY_BG))
-        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
+    # ── Build ──────────────────────────────────────────────────────────────────
 
-        root = QVBoxLayout(self)
-        root.setContentsMargins(0, 0, 0, 0)
-        root.setSpacing(0)
+    def _build_ui(self) -> None:
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(Spacing.SM, Spacing.MD, Spacing.SM, Spacing.MD)
+        layout.setSpacing(Spacing.XS)
 
-        # Space reserved for the floating hamburger button
-        root.addSpacing(cfg.HAMBURGER_BTN_SIZE + 16)
-
-        # ── Nav items ────────────────────────────────────────────────────────
-        self._nav_container = QWidget()
-        self._nav_container.setStyleSheet("background: transparent;")
-        nav_layout = QVBoxLayout(self._nav_container)
-        nav_layout.setContentsMargins(10, 0, 10, 0)
-        nav_layout.setSpacing(5)
-
-        for label, page_key in cfg.NAV_ITEMS:
-            btn = self._make_nav_button(label, page_key)
-            nav_layout.addWidget(btn)
-            self._nav_buttons[page_key] = btn
-
-        nav_layout.addStretch()
-        root.addWidget(self._nav_container, stretch=1)
-
-        # ── Upload button ────────────────────────────────────────────────────
-        self._upload_btn = QPushButton(cfg.LABEL_UPLOAD)
-        self._upload_btn.setFixedHeight(cfg.UPLOAD_BUTTON_HEIGHT)
-        self._upload_btn.setFont(cfg.FONT_BUTTON)
-        self._upload_btn.setStyleSheet(
-            cfg.upload_button_style(cfg.COLOR_ACCENT_MAIN, cfg.COLOR_ACCENT_HOVER, cfg.COLOR_TEXT_MAIN)
+        # Hamburger menu button
+        self._hamburger = QPushButton("☰")
+        self._hamburger.setFixedSize(Layout.NAV_BTN_ICON_W + 4, Layout.NAV_BTN_ICON_W + 4)
+        self._hamburger.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._hamburger.setStyleSheet(
+            f"QPushButton {{"
+            f"  background: transparent;"
+            f"  color: {Colors.TEXT_PRIMARY};"
+            f"  font-size: 20px;"
+            f"  border: none;"
+            f"  border-radius: {Radius.SM}px;"
+            f"}}"
+            f"QPushButton:hover {{ background: {Colors.SIDEBAR_BTN_HOVER}; }}"
         )
-        self._upload_btn.setCursor(Qt.PointingHandCursor)
-        self._upload_btn.clicked.connect(self.uploadRequested)
+        self._hamburger.clicked.connect(self._on_hamburger)
 
-        upload_row = QHBoxLayout()
-        upload_row.setContentsMargins(10, 0, 10, 16)
-        upload_row.addWidget(self._upload_btn)
-        root.addLayout(upload_row)
+        layout.addWidget(self._hamburger, alignment=Qt.AlignmentFlag.AlignLeft)
+        layout.addSpacing(Spacing.MD)
 
-    # ── Factory ───────────────────────────────────────────────────────────────
+        # Navigation buttons
+        self._btn_group = QButtonGroup(self)
+        self._btn_group.setExclusive(True)
 
-    def _make_nav_button(self, label: str, page_key: str) -> QPushButton:
-        btn = QPushButton(label)
-        btn.setFixedHeight(cfg.NAV_BUTTON_HEIGHT)
-        btn.setFont(cfg.FONT_BUTTON)
-        btn.setStyleSheet(
-            cfg.nav_button_style(cfg.COLOR_ACCENT_MAIN, cfg.COLOR_ACCENT_HOVER, cfg.COLOR_TEXT_MAIN)
+        for panel_id, label, arrow, tip in _NAV_ITEMS:
+            btn = self._make_nav_btn(label, arrow, tip)
+            btn.setProperty("panel_id", panel_id)
+            self._btn_group.addButton(btn)
+            layout.addWidget(btn)
+
+        layout.addSpacerItem(
+            QSpacerItem(0, 0, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
         )
-        btn.setCursor(Qt.PointingHandCursor)
-        btn.clicked.connect(lambda checked=False, k=page_key: self._on_nav_clicked(k))
+
+        # Select first button by default
+        buttons = self._btn_group.buttons()
+        if buttons:
+            buttons[0].setChecked(True)
+
+        self._btn_group.buttonClicked.connect(self._on_nav_clicked)
+
+    def _make_nav_btn(self, label: str, arrow: str, tip: str) -> QPushButton:
+        btn = QPushButton(f"  {arrow}   {label}")
+        btn.setObjectName("NavButton")
+        btn.setFont(Fonts.nav_button())
+        btn.setFixedHeight(Layout.NAV_BTN_H)
+        btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        btn.setCheckable(True)
+        btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn.setToolTip(tip)
         return btn
 
-    # ── Public API ────────────────────────────────────────────────────────────
+    # ── Slots ──────────────────────────────────────────────────────────────────
 
-    def set_active(self, page_key: str):
-        """Highlight the active nav button; reset the previous one."""
-        prev = self._nav_buttons.get(self._active_key)
-        if prev:
-            prev.setStyleSheet(
-                cfg.nav_button_style(cfg.COLOR_ACCENT_MAIN, cfg.COLOR_ACCENT_HOVER, cfg.COLOR_TEXT_MAIN)
-            )
-        self._active_key = page_key
-        curr = self._nav_buttons.get(page_key)
-        if curr:
-            curr.setStyleSheet(
-                cfg.nav_button_active_style(cfg.COLOR_ACCENT_ACTIVE, cfg.COLOR_TEXT_MAIN)
-            )
+    def _on_nav_clicked(self, btn: QPushButton) -> None:
+        panel_id = btn.property("panel_id")
+        if panel_id:
+            self.panel_changed.emit(panel_id)
 
-    def collapse(self):
-        self._nav_container.setVisible(False)
-        self._upload_btn.setVisible(False)
-        self.setFixedWidth(cfg.SIDEBAR_CLOSED_W)
-        self.expanded = False
+    def _on_hamburger(self) -> None:
+        """Toggle sidebar width (collapse/expand)."""
+        if self.width() == Layout.SIDEBAR_W_EXPANDED:
+            self.setFixedWidth(Layout.SIDEBAR_W_COLLAPSED)
+            for btn in self._btn_group.buttons():
+                btn.setText("›")
+        else:
+            self.setFixedWidth(Layout.SIDEBAR_W_EXPANDED)
+            for btn, (_, label, arrow, _tip) in zip(
+                self._btn_group.buttons(), _NAV_ITEMS
+            ):
+                btn.setText(f"  {arrow}   {label}")
 
-    def expand(self, parent_width: int):
-        self.setFixedWidth(int(parent_width * cfg.SIDEBAR_FRACTION))
-        self._nav_container.setVisible(True)
-        self._upload_btn.setVisible(True)
-        self.expanded = True
+    # ── Public API ─────────────────────────────────────────────────────────────
 
-    def set_upload_enabled(self, enabled: bool):
-        self._upload_btn.setEnabled(enabled)
-
-    def apply_font_scale(self, scale: float):
-        def s(base: int) -> int:
-            return max(cfg.BASE_FONT_MIN, int(base * scale))
-
-        f = QFont(cfg.FONT_BUTTON.family(), s(cfg.BASE_FONT_BUTTON), QFont.Bold)
-        for btn in self._nav_buttons.values():
-            btn.setFont(f)
-        self._upload_btn.setFont(f)
-
-    # ── Internal ──────────────────────────────────────────────────────────────
-
-    def _on_nav_clicked(self, page_key: str):
-        self.set_active(page_key)
-        self.navigateTo.emit(page_key)
+    def select_panel(self, panel_id: str) -> None:
+        """Programmatically select a nav item."""
+        for btn in self._btn_group.buttons():
+            if btn.property("panel_id") == panel_id:
+                btn.setChecked(True)
+                break
