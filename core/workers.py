@@ -158,3 +158,48 @@ class AudioWorker(QThread):
             self.result.emit(str(out))
         except Exception as exc:
             self.error.emit(str(exc))
+
+
+class QuestionWorker(QThread):
+    """Calls AI to generate questions from selected extracted texts."""
+
+    progress = Signal(str)
+    result   = Signal(str)   # path to saved question JSON file
+    error    = Signal(str)
+
+    def __init__(self, texts: list[str], parent=None) -> None:
+        super().__init__(parent)
+        self._texts = texts
+
+    def run(self) -> None:
+        try:
+            from .question_generator import generate_questions, save_questions
+            self.progress.emit("Generating questions…")
+            combined = "\n\n".join(self._texts)
+            questions = generate_questions(combined)
+            path = save_questions(questions)
+            self.result.emit(str(path))
+        except Exception as exc:
+            self.error.emit(str(exc))
+
+
+class QuestionGenWorker(QThread):
+    """Calls AI API to generate questions in a background thread."""
+
+    progress = Signal(str)
+    result   = Signal(str)   # path to saved question JSON
+    error    = Signal(str)
+
+    def __init__(self, source_texts: dict, parent=None) -> None:
+        super().__init__(parent)
+        self._source_texts = source_texts
+
+    def run(self) -> None:
+        try:
+            from .qa_engine import QAEngine
+            self.progress.emit("Generating questions…")
+            engine = QAEngine()
+            path = engine.generate_questions(self._source_texts)
+            self.result.emit(str(path))
+        except Exception as exc:
+            self.error.emit(str(exc))

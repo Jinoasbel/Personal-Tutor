@@ -1,0 +1,120 @@
+{
+  "provider": "gemini",
+  "model": "gemini-2.5-flash",
+  "source_files": [
+    "text"
+  ],
+  "generated_at": "2026-03-06T21:52:13.929608",
+  "questions": [
+    {
+      "id": 1,
+      "question": "What is the name the narrator asks to be called?",
+      "options": [
+        "A. Ishmael",
+        "B. Ahab",
+        "C. Queequeg",
+        "D. Starbuck"
+      ],
+      "answer": "A"
+    },
+    {
+      "id": 2,
+      "question": "What was the narrator's financial situation before deciding to sail?",
+      "options": [
+        "A. He had a substantial amount of money.",
+        "B. He had little or no money in his purse.",
+        "C. He was waiting for an inheritance.",
+        "D. He was earning a good salary."
+      ],
+      "answer": "B"
+    },
+    {
+      "id": 3,
+      "question": "What was the narrator's interest in staying on shore at the time?",
+      "options": [
+        "A. He had many friends to visit.",
+        "B. He was pursuing a romantic interest.",
+        "C. He had nothing particular to interest him on shore.",
+        "D. He was busy with family obligations."
+      ],
+      "answer": "C"
+    },
+    {
+      "id": 4,
+      "question": "What was the narrator's stated primary intention for sailing?",
+      "options": [
+        "A. To find buried treasure.",
+        "B. To explore new continents.",
+        "C. To see the watery part of the world.",
+        "D. To escape legal troubles."
+      ],
+      "answer": "C"
+    },
+    {
+      "id": 5,
+      "question": "The narrator states that going to sea is a way he has of 'driving off the spleen'. In this context, what does 'spleen' most likely refer to?",
+      "options": [
+        "A. A physical illness of an organ.",
+        "B. Bad temper or melancholy.",
+        "C. A desire for adventure.",
+        "D. Financial troubles."
+      ],
+      "answer": "B"
+    },
+    {
+      "id": 6,
+      "question": "Besides 'driving off the spleen,' what other benefit does the narrator attribute to sailing?",
+      "options": [
+        "A. Gaining wealth.",
+        "B. Regulating the circulation.",
+        "C. Meeting new people.",
+        "D. Finding a spouse."
+      ],
+      "answer": "B"
+    },
+    {
+      "id": 7,
+      "question": "Which phrase describes a recurring feeling or situation that prompts the narrator to go to sea?",
+      "options": [
+        "A. When he feels particularly joyful and energetic.",
+        "B. Whenever he finds himself growing grim about the mouth.",
+        "C. After receiving a large sum of money.",
+        "D. When he is invited on a voyage by friends."
+      ],
+      "answer": "B"
+    },
+    {
+      "id": 8,
+      "question": "The narrator mentions 'a damp, drizzly November in my soul'. What does this metaphor signify?",
+      "options": [
+        "A. A love for the autumn season.",
+        "B. A period of deep sadness or depression.",
+        "C. A literal cold and wet weather condition.",
+        "D. A desire to travel to colder climates."
+      ],
+      "answer": "B"
+    },
+    {
+      "id": 9,
+      "question": "When the narrator's 'hypos get such an upper hand of me,' what does he say is required to prevent him from 'deliberately stepping into the street'?",
+      "options": [
+        "A. A strong desire for fame.",
+        "B. A call from a dear friend.",
+        "C. A strong moral principle.",
+        "D. The sudden appearance of sunshine."
+      ],
+      "answer": "C"
+    },
+    {
+      "id": 10,
+      "question": "Based on the passage, what is the overall emotional state of the narrator when he decides to go to sea?",
+      "options": [
+        "A. Enthusiastic and curious.",
+        "B. Bored and financially broke, seeking an escape from melancholy.",
+        "C. Content and relaxed, seeking adventure.",
+        "D. Angry and vengeful, seeking retribution."
+      ],
+      "answer": "B"
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "gemini": {
+    "key": "",
+    "model": "gemini-2.5-flash"
+  },
+  "_active_provider": "gemini"
+}

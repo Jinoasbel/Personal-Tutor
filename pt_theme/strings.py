@@ -40,6 +40,7 @@ class Strings:
     TIP_SUMMARIZE     = "Summarize the content"
     TIP_AUDIO         = "Convert content to audio"
     TIP_ASK           = "Ask questions about content"
+    TIP_SETTINGS      = "AI provider & API key settings"
     TIP_ADD_LINK      = "Add a new link"
     TIP_REMOVE_LINK   = "Remove this link"
     TIP_BROWSE_FILES  = "Browse for files"
