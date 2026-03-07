@@ -156,8 +156,8 @@ AI Providers
     The app makes direct HTTPS calls using only Python's built-in urllib — no third-party AI SDK is required.
 
     ProviderModels available:
-        Anthropicclaude-sonnet-4, claude-opus-4, claude-haiku-4-5
-        OpenAIgpt-4o, gpt-4o-mini, gpt-4-turbo
+        Anthropic claude-sonnet-4, claude-opus-4, claude-haiku-4-5
+        OpenAI gpt-4o, gpt-4o-mini, gpt-4-turbo
         Google Geminigemini-2.5-flash, gemini-2.5-pro, gemini-2.0-flash
 
 Audio Voices:
