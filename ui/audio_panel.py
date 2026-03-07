@@ -300,8 +300,8 @@ class ReadyView(QWidget):
         if not Config.AUDIO_DIR.exists():
             return
         files = sorted(
-            list(Config.AUDIO_DIR.glob("*_lesson*.mp3")) +
-            list(Config.AUDIO_DIR.glob("*_lesson*.wav")),
+            list(Config.AUDIO_DIR.glob("*_lesson*.wav")) +
+            list(Config.AUDIO_DIR.glob("*_lesson*.mp3")),
             key=lambda p: p.stat().st_mtime, reverse=True,
         )
         for f in files:
@@ -346,8 +346,8 @@ class ReadyView(QWidget):
         if not Config.AUDIO_DIR.exists():
             return False
         return bool(
-            list(Config.AUDIO_DIR.glob("*_lesson*.mp3")) +
-            list(Config.AUDIO_DIR.glob("*_lesson*.wav"))
+            list(Config.AUDIO_DIR.glob("*_lesson*.wav")) +
+            list(Config.AUDIO_DIR.glob("*_lesson*.mp3"))
         )
 
     # ── Player controls ────────────────────────────────────────────────────────
@@ -400,61 +400,161 @@ SAMPLES_DIR = (
 )
 
 
-class VoiceRow(QWidget):
-    """Single voice row: radio button + name label + ▶ play button."""
+class VoicePopup(QWidget):
+    """
+    Floating popup window containing voice rows with play buttons.
+    Opens below the VoiceSelector button, closes on outside click.
+    """
 
-    selected = Signal(str)   # voice_key
+    voice_chosen = Signal(str)   # voice_key
+
+    def __init__(self, parent=None) -> None:
+        super().__init__(parent, Qt.WindowType.Popup)
+        self.setStyleSheet(f"""
+            QWidget {{
+                background: {Colors.SURFACE_MID};
+                border: 1px solid {Colors.BORDER_DEFAULT};
+                border-radius: {Radius.MD}px;
+            }}
+        """)
+        self._rows: dict[str, "_VoiceRow"] = {}
+        self._current_player: QMediaPlayer | None = None
+        self._current_audio:  QAudioOutput | None = None
+        self._build()
+
+    def _build(self) -> None:
+        root = QVBoxLayout(self)
+        root.setContentsMargins(Spacing.SM, Spacing.SM, Spacing.SM, Spacing.SM)
+        root.setSpacing(2)
+        self.setMinimumWidth(260)
+
+        for key, display in VOICES.items():
+            row = _VoiceRow(key, display, self)
+            row.selected.connect(self._on_selected)
+            row.play_clicked.connect(self._on_play)
+            self._rows[key] = row
+            root.addWidget(row)
+
+    def _on_selected(self, voice_key: str) -> None:
+        for k, r in self._rows.items():
+            r.set_checked(k == voice_key)
+        self._stop_current()
+        self.voice_chosen.emit(voice_key)
+        self.hide()
+
+    def _on_play(self, voice_key: str) -> None:
+        """Play or stop the sample for voice_key."""
+        # If same voice is playing, stop it
+        row = self._rows.get(voice_key)
+        if not row:
+            return
+
+        if (self._current_player and
+                self._current_player.playbackState() ==
+                QMediaPlayer.PlaybackState.PlayingState):
+            # Stop whatever is playing
+            prev_key = getattr(self, "_playing_key", None)
+            self._stop_current()
+            if prev_key == voice_key:
+                return   # toggled off
+
+        # Find sample file — WAV preferred (MP3 may be corrupt)
+        sample = SAMPLES_DIR / f"{voice_key}.wav"
+        if not sample.exists():
+            sample = SAMPLES_DIR / f"{voice_key}.mp3"
+        if not sample.exists():
+            return
+
+        # Create fresh player — store on self to prevent GC
+        self._current_player = QMediaPlayer(self)
+        self._current_audio  = QAudioOutput(
+            QMediaDevices.defaultAudioOutput(), self
+        )
+        self._current_audio.setVolume(0.9)
+        self._current_player.setAudioOutput(self._current_audio)
+        self._playing_key = voice_key
+
+        def on_state(state, vk=voice_key):
+            playing = state == QMediaPlayer.PlaybackState.PlayingState
+            if vk in self._rows:
+                self._rows[vk].set_play_icon("⏹" if playing else "▶")
+            if not playing:
+                self._playing_key = None
+
+        self._current_player.playbackStateChanged.connect(on_state)
+        self._current_player.setSource(QUrl.fromLocalFile(str(sample)))
+        self._current_player.play()
+        row.set_play_icon("⏹")
+
+    def _stop_current(self) -> None:
+        if self._current_player:
+            self._current_player.stop()
+        key = getattr(self, "_playing_key", None)
+        if key and key in self._rows:
+            self._rows[key].set_play_icon("▶")
+        self._playing_key = None
+
+    def set_checked(self, voice_key: str) -> None:
+        for k, r in self._rows.items():
+            r.set_checked(k == voice_key)
+
+    def enable_preview(self, voice_key: str) -> None:
+        if voice_key in self._rows:
+            self._rows[voice_key].enable_play()
+
+    def stop_all(self) -> None:
+        self._stop_current()
+
+
+class _VoiceRow(QWidget):
+    """Row inside VoicePopup: radio dot + name + ▶ play button."""
+
+    selected    = Signal(str)
+    play_clicked = Signal(str)
 
     def __init__(self, voice_key: str, display: str, parent=None) -> None:
         super().__init__(parent)
-        self._key      = voice_key
-        self._player   = None   # created lazily
-        self._playing  = False
-        self.setStyleSheet("background: transparent;")
+        self._key = voice_key
+        self.setStyleSheet("background: transparent; border: none;")
+        self.setFixedHeight(34)
 
         row = QHBoxLayout(self)
-        row.setContentsMargins(0, 0, 0, 0)
-        row.setSpacing(Spacing.XS)
+        row.setContentsMargins(Spacing.XS, 0, Spacing.XS, 0)
+        row.setSpacing(Spacing.SM)
 
-        # Radio-style select button
-        self._radio = QPushButton()
-        self._radio.setCheckable(True)
-        self._radio.setFixedSize(18, 18)
-        self._radio.setStyleSheet(f"""
+        self._dot = QPushButton()
+        self._dot.setCheckable(True)
+        self._dot.setFixedSize(14, 14)
+        self._dot.setStyleSheet(f"""
             QPushButton {{
-                background: {Colors.SURFACE_MID};
+                background: transparent;
                 border: 2px solid {Colors.BORDER_DEFAULT};
-                border-radius: 9px;
+                border-radius: 7px;
             }}
             QPushButton:checked {{
                 background: {Colors.ICON_ACTIVE};
                 border-color: {Colors.ICON_ACTIVE};
             }}
         """)
-        self._radio.clicked.connect(lambda: self.selected.emit(self._key))
+        self._dot.clicked.connect(lambda: self.selected.emit(self._key))
 
-        # Name
-        self._name = QLabel(display)
-        self._name.setFont(Fonts.body())
-        self._name.setStyleSheet(f"color: {Colors.TEXT_PRIMARY};")
-        self._name.setSizePolicy(
-            __import__('PySide6.QtWidgets', fromlist=['QSizePolicy']).QSizePolicy.Policy.Expanding,
-            __import__('PySide6.QtWidgets', fromlist=['QSizePolicy']).QSizePolicy.Policy.Preferred,
-        )
+        self._lbl = QLabel(display)
+        self._lbl.setFont(Fonts.body())
+        self._lbl.setStyleSheet(f"color: {Colors.TEXT_PRIMARY}; border: none;")
+        from PySide6.QtWidgets import QSizePolicy as SP
+        self._lbl.setSizePolicy(SP.Policy.Expanding, SP.Policy.Preferred)
 
-        # Play/stop button — disabled until sample exists
         self._play_btn = QPushButton("▶")
-        self._play_btn.setFixedSize(26, 26)
+        self._play_btn.setFixedSize(24, 24)
         self._play_btn.setEnabled(False)
         self._play_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._play_btn.setToolTip(f"Preview {display}")
         self._play_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {Colors.SURFACE_MID};
-                color: {Colors.TEXT_SECONDARY};
+                background: transparent;
+                color: {Colors.TEXT_PLACEHOLDER};
                 border: 1px solid {Colors.BORDER_DEFAULT};
-                border-radius: 13px;
-                font-size: 10px;
+                border-radius: 12px;
+                font-size: 9px;
             }}
             QPushButton:enabled {{
                 color: {Colors.ICON_ACTIVE};
@@ -463,105 +563,81 @@ class VoiceRow(QWidget):
             QPushButton:enabled:hover {{
                 background: {Colors.SIDEBAR_ACTIVE};
             }}
-            QPushButton:disabled {{
-                color: {Colors.TEXT_PLACEHOLDER};
-            }}
         """)
-        self._play_btn.clicked.connect(self._toggle_preview)
+        self._play_btn.clicked.connect(lambda: self.play_clicked.emit(self._key))
 
-        row.addWidget(self._radio)
-        row.addWidget(self._name)
+        row.addWidget(self._dot)
+        row.addWidget(self._lbl)
         row.addStretch()
         row.addWidget(self._play_btn)
 
-    def set_checked(self, checked: bool) -> None:
-        self._radio.setChecked(checked)
+    def set_checked(self, v: bool) -> None:
+        self._dot.setChecked(v)
 
-    def enable_preview(self) -> None:
-        """Called when the sample file is ready."""
+    def enable_play(self) -> None:
         self._play_btn.setEnabled(True)
-        self._play_btn.setToolTip(f"Preview voice")
 
-    def stop_preview(self) -> None:
-        if self._player:
-            self._player.stop()
-        self._playing = False
-        self._play_btn.setText("▶")
-
-    def _toggle_preview(self) -> None:
-        sample = SAMPLES_DIR / f"{self._key}.mp3"
-        if not sample.exists():
-            sample = SAMPLES_DIR / f"{self._key}.wav"
-        if not sample.exists():
-            return
-
-        if self._player is None:
-            self._player   = QMediaPlayer(self)
-            audio_out      = QAudioOutput(QMediaDevices.defaultAudioOutput(), self)
-            audio_out.setVolume(0.9)
-            self._player.setAudioOutput(audio_out)
-            self._player.playbackStateChanged.connect(self._on_state)
-
-        if self._playing:
-            self._player.stop()
-        else:
-            self._player.setSource(QUrl.fromLocalFile(str(sample)))
-            self._player.play()
-
-    def _on_state(self, state) -> None:
-        playing = state == QMediaPlayer.PlaybackState.PlayingState
-        self._playing = playing
-        self._play_btn.setText("⏹" if playing else "▶")
+    def set_play_icon(self, icon: str) -> None:
+        self._play_btn.setText(icon)
 
 
 class VoiceSelector(QWidget):
     """
-    Scrollable list of VoiceRow widgets.
-    Manages radio-button-style single selection.
-    Enables preview buttons as sample files become available.
+    Dropdown-style voice picker.
+    Shows selected voice name + chevron button.
+    Clicking opens VoicePopup below it.
     """
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
-        self._rows:    dict[str, VoiceRow] = {}
-        self._current: str = DEFAULT_VOICE
+        self._current = DEFAULT_VOICE
+        self._popup   = VoicePopup()
+        self._popup.voice_chosen.connect(self._on_chosen)
         self._build()
+        self._popup.set_checked(DEFAULT_VOICE)
 
     def _build(self) -> None:
-        root = QVBoxLayout(self)
+        root = QHBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
-        root.setSpacing(2)
-        self.setStyleSheet("background: transparent;")
+        root.setSpacing(0)
 
-        for key, display in VOICES.items():
-            row = VoiceRow(key, display, self)
-            row.selected.connect(self._on_selected)
-            self._rows[key] = row
-            root.addWidget(row)
+        self._btn = QPushButton(VOICES.get(DEFAULT_VOICE, DEFAULT_VOICE) + "  ▾")
+        self._btn.setFont(Fonts.body())
+        self._btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {Colors.SURFACE_MID};
+                color: {Colors.TEXT_PRIMARY};
+                border: 1px solid {Colors.BORDER_DEFAULT};
+                border-radius: {Radius.SM}px;
+                padding: {Spacing.XS}px {Spacing.SM}px;
+                text-align: left;
+            }}
+            QPushButton:hover {{
+                border-color: {Colors.ICON_ACTIVE};
+            }}
+        """)
+        self._btn.clicked.connect(self._open_popup)
+        root.addWidget(self._btn)
 
-        # Mark default as selected
-        if DEFAULT_VOICE in self._rows:
-            self._rows[DEFAULT_VOICE].set_checked(True)
+    def _open_popup(self) -> None:
+        self._popup.stop_all()
+        # Position popup below the button
+        btn_global = self._btn.mapToGlobal(self._btn.rect().bottomLeft())
+        self._popup.setFixedWidth(max(self._btn.width(), 260))
+        self._popup.move(btn_global)
+        self._popup.show()
 
-    def _on_selected(self, voice_key: str) -> None:
-        # Deselect previous, stop its preview
-        if self._current in self._rows:
-            self._rows[self._current].set_checked(False)
-            self._rows[self._current].stop_preview()
+    def _on_chosen(self, voice_key: str) -> None:
         self._current = voice_key
-        self._rows[voice_key].set_checked(True)
+        self._btn.setText(VOICES.get(voice_key, voice_key) + "  ▾")
 
     def selected_voice(self) -> str:
         return self._current
 
     def on_sample_ready(self, voice_key: str) -> None:
-        """Called by main_window when a sample file has been generated."""
-        if voice_key in self._rows:
-            self._rows[voice_key].enable_preview()
+        self._popup.enable_preview(voice_key)
 
-    def stop_all_previews(self) -> None:
-        for row in self._rows.values():
-            row.stop_preview()
 
 
 # ── Main Audio Panel ───────────────────────────────────────────────────────────

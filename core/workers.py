@@ -255,12 +255,12 @@ class LessonWorker(QThread):
             base     = re.sub(r'[\\/*?:"<>|\s]', "_", base).strip("_")[:100]
 
             Config.AUDIO_DIR.mkdir(parents=True, exist_ok=True)
-            mp3_path = Config.AUDIO_DIR / f"{base}_lesson.mp3"
+            mp3_path = Config.AUDIO_DIR / f"{base}_lesson.wav"
 
             # Avoid overwriting
             counter = 2
             while mp3_path.exists():
-                mp3_path = Config.AUDIO_DIR / f"{base}_lesson_{counter}.mp3"
+                mp3_path = Config.AUDIO_DIR / f"{base}_lesson_{counter}.wav"
                 counter += 1
 
             generator = AudioGenerator(voice=self._voice)
@@ -329,9 +329,10 @@ class VoiceSampleWorker(QThread):
             return
 
         for voice_key in self._voices:
+            # Check both .wav and .mp3 (legacy)
+            wav_path = self._samples_dir / f"{voice_key}.wav"
             mp3_path = self._samples_dir / f"{voice_key}.mp3"
-            if mp3_path.exists():
-                # Already generated — just notify UI
+            if wav_path.exists() or mp3_path.exists():
                 self.sample_ready.emit(voice_key)
                 continue
 
@@ -346,23 +347,9 @@ class VoiceSampleWorker(QThread):
 
                 combined = np.concatenate(audio_parts)
 
-                # Save WAV to temp, convert to MP3
-                from app_config import Config
-                Config.TEMP_DIR.mkdir(parents=True, exist_ok=True)
-                wav_tmp = Config.TEMP_DIR / f"{voice_key}_sample_tmp.wav"
-                sf.write(str(wav_tmp), combined, 24000)
-
-                try:
-                    from pydub import AudioSegment
-                    audio_seg = AudioSegment.from_wav(str(wav_tmp))
-                    audio_seg.export(str(mp3_path), format="mp3", bitrate="96k")
-                    wav_tmp.unlink(missing_ok=True)
-                except Exception:
-                    # pydub unavailable — keep as WAV
-                    wav_out = mp3_path.with_suffix(".wav")
-                    wav_tmp.rename(wav_out)
-                    mp3_path = wav_out
-
+                # Save directly as WAV — reliable, no conversion needed
+                wav_path = self._samples_dir / f"{voice_key}.wav"
+                sf.write(str(wav_path), combined, 24000)
                 self.sample_ready.emit(voice_key)
 
             except Exception as e:

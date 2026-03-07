@@ -70,8 +70,9 @@ class AudioGenerator:
         progress_cb: Callable[[str], None] | None = None,
     ) -> Path:
         """
-        Convert lesson script to MP3 (or WAV if pydub unavailable).
-        Temp WAV is always written to Data/temp/ and deleted after conversion.
+        Convert lesson script to WAV.
+        WAV is used directly — always valid, no conversion needed.
+        Output path extension is forced to .wav regardless of what was passed.
         """
         import numpy as np
         try:
@@ -79,14 +80,8 @@ class AudioGenerator:
         except ImportError:
             raise RuntimeError("soundfile not installed. Run: pip install soundfile")
 
-        from app_config import Config
-        Config.TEMP_DIR.mkdir(parents=True, exist_ok=True)
-
-        out      = Path(output_path)
+        out = Path(output_path).with_suffix(".wav")   # always WAV
         out.parent.mkdir(parents=True, exist_ok=True)
-
-        # Temp WAV always goes to Data/temp/ — never in Data/audio/
-        wav_path = Config.TEMP_DIR / (out.stem + "_tmp.wav")
 
         # 1. Load model
         self._load_pipeline(progress_cb)
@@ -111,47 +106,13 @@ class AudioGenerator:
         if not audio_parts:
             raise RuntimeError("No audio was generated — all chunks failed.")
 
-        # 4. Concatenate + write temp WAV
+        # 4. Concatenate and write directly as WAV
         if progress_cb:
-            progress_cb("Combining audio…")
+            progress_cb("Saving audio…")
         combined = np.concatenate(audio_parts)
-        sf.write(str(wav_path), combined, SAMPLE_RATE)
-        logger.info(f"Temp WAV written: {wav_path}")
-
-        # 5. Convert to MP3, then delete temp WAV
-        final = self._wav_to_mp3(wav_path, out, progress_cb)
-        return final
-
-    def _wav_to_mp3(
-        self,
-        wav_path: Path,
-        mp3_path: Path,
-        progress_cb: Callable[[str], None] | None = None,
-    ) -> Path:
-        try:
-            from pydub import AudioSegment
-            if progress_cb:
-                progress_cb("Converting to MP3…")
-            audio = AudioSegment.from_wav(str(wav_path))
-            # Ensure output path has .mp3 extension
-            final = mp3_path.with_suffix(".mp3")
-            audio.export(str(final), format="mp3", bitrate="128k")
-            wav_path.unlink(missing_ok=True)   # always remove temp WAV
-            logger.info(f"MP3 saved: {final}")
-            return final
-        except ImportError:
-            logger.warning("pydub not installed — output will be WAV")
-            final = mp3_path.with_suffix(".wav")
-            wav_path.rename(final)
-            return final
-        except Exception as e:
-            logger.warning(f"MP3 conversion failed ({e}) — output will be WAV")
-            final = mp3_path.with_suffix(".wav")
-            try:
-                wav_path.rename(final)
-            except Exception:
-                pass
-            return final
+        sf.write(str(out), combined, SAMPLE_RATE)
+        logger.info(f"WAV saved: {out}")
+        return out
 
     def _split_chunks(self, text: str) -> list[str]:
         sentences = re.split(r'(?<=[.!?])\s+', text.strip())
