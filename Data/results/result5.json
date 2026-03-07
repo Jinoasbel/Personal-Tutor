@@ -1,0 +1,78 @@
+{
+  "question_file": "question1.json",
+  "attempted_at": "2026-03-07T18:04:47.323686",
+  "score": 0,
+  "total": 10,
+  "answers": [
+    {
+      "id": 1,
+      "question": "What is the name the narrator asks to be called?",
+      "selected": "C",
+      "correct": "A",
+      "is_correct": false
+    },
+    {
+      "id": 2,
+      "question": "What was the narrator's financial situation before deciding to sail?",
+      "selected": "C",
+      "correct": "B",
+      "is_correct": false
+    },
+    {
+      "id": 3,
+      "question": "What was the narrator's interest in staying on shore at the time?",
+      "selected": "B",
+      "correct": "C",
+      "is_correct": false
+    },
+    {
+      "id": 4,
+      "question": "What was the narrator's stated primary intention for sailing?",
+      "selected": "",
+      "correct": "C",
+      "is_correct": false
+    },
+    {
+      "id": 5,
+      "question": "The narrator states that going to sea is a way he has of 'driving off the spleen'. In this context, what does 'spleen' most likely refer to?",
+      "selected": "",
+      "correct": "B",
+      "is_correct": false
+    },
+    {
+      "id": 6,
+      "question": "Besides 'driving off the spleen,' what other benefit does the narrator attribute to sailing?",
+      "selected": "",
+      "correct": "B",
+      "is_correct": false
+    },
+    {
+      "id": 7,
+      "question": "Which phrase describes a recurring feeling or situation that prompts the narrator to go to sea?",
+      "selected": "",
+      "correct": "B",
+      "is_correct": false
+    },
+    {
+      "id": 8,
+      "question": "The narrator mentions 'a damp, drizzly November in my soul'. What does this metaphor signify?",
+      "selected": "",
+      "correct": "B",
+      "is_correct": false
+    },
+    {
+      "id": 9,
+      "question": "When the narrator's 'hypos get such an upper hand of me,' what does he say is required to prevent him from 'deliberately stepping into the street'?",
+      "selected": "",
+      "correct": "C",
+      "is_correct": false
+    },
+    {
+      "id": 10,
+      "question": "Based on the passage, what is the overall emotional state of the narrator when he decides to go to sea?",
+      "selected": "",
+      "correct": "B",
+      "is_correct": false
+    }
+  ]
+}

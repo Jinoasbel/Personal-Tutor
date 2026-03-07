@@ -56,7 +56,7 @@ def get_stylesheet() -> str:
         background-color: {Colors.BTN_UPLOAD_BG};
         color: {Colors.TEXT_PRIMARY};
         border: 1px solid {Colors.BTN_UPLOAD_BORDER};
-        border-radius: {Radius.PILL}px;
+        border-radius: 15px;
         padding: 10px 22px;
     }}
     QPushButton#UploadFab:hover {{

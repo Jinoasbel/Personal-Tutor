@@ -8,7 +8,6 @@ from pathlib import Path
 class Config:
     # ── Paths ─────────────────────────────────────────────────────────────────
     DATA_DIR          = Path("Data")
-    AUDIO_OUTPUT      = DATA_DIR / "output_audio.mp3"
     TEMP_DIR          = DATA_DIR / "temp"
 
     EXTRACTED_DIR     = DATA_DIR / "extracted"
@@ -21,12 +20,24 @@ class Config:
     # Quiz attempt results saved as result1.json, result2.json …
     RESULTS_DIR       = DATA_DIR / "results"
 
+    # Summaries saved as <name>_summarized.txt
+    SUMMARIES_DIR     = DATA_DIR / "summaries"
+
+    # Lesson teaching scripts saved as <name>_lesson.txt
+    LESSONS_DIR       = DATA_DIR / "lessons"
+
+    # Generated audio lessons saved as <name>_lesson.mp3
+    AUDIO_DIR         = DATA_DIR / "audio"
+
+    # Legacy single audio output (kept for compatibility)
+    AUDIO_OUTPUT      = AUDIO_DIR / "output_audio.mp3"
+
     # ── AI Service ────────────────────────────────────────────────────────────
-    AI_PROVIDER       = "claude"           # "claude" | "openai"
-    AI_API_KEY        = ""                 # or set via env var ANTHROPIC_API_KEY / OPENAI_API_KEY
+    AI_PROVIDER       = "claude"
+    AI_API_KEY        = ""
     AI_MODEL_CLAUDE   = "claude-sonnet-4-20250514"
     AI_MODEL_OPENAI   = "gpt-4o"
-    AI_QUESTION_COUNT = 10                 # questions per generation
+    AI_QUESTION_COUNT = 10
 
     # ── OCR ───────────────────────────────────────────────────────────────────
     OCR_LANG          = "en"

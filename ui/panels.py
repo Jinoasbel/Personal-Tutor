@@ -64,10 +64,13 @@ class ExtractedPanel(QWidget):
         header.addWidget(refresh_btn)
         root.addLayout(header)
 
-        # Status bar (shown during OCR)
+        # Status bar (shown during OCR / link fetch) — single line, fixed height
         self._status_label = QLabel("")
         self._status_label.setFont(Fonts.body())
         self._status_label.setStyleSheet(f"color: {Colors.TEXT_ACCENT};")
+        self._status_label.setFixedHeight(20)
+        self._status_label.setWordWrap(False)
+        self._status_label.setTextFormat(Qt.TextFormat.PlainText)
         self._status_label.setVisible(False)
         root.addWidget(self._status_label)
 
@@ -217,9 +220,10 @@ class ExtractedPanel(QWidget):
     # ── Public API ─────────────────────────────────────────────────────────────
 
     def set_text(self, text: str) -> None:
-        """Called during OCR to show live status in the status bar."""
-        self._status_label.setText(text)
-        self._status_label.setVisible(bool(text))
+        """Show a single-line status message. Truncates at first newline."""
+        single = text.split("\n")[0].strip()
+        self._status_label.setText(single)
+        self._status_label.setVisible(bool(single))
 
     def clear(self) -> None:
         self._text_area.clear()
@@ -227,85 +231,327 @@ class ExtractedPanel(QWidget):
         self._status_label.setVisible(False)
 
 
+
 # ── Summarize Panel ────────────────────────────────────────────────────────────
 
 class SummarizePanel(QWidget):
-    summarize_requested = Signal()
+    """
+    Left pane  : file checkboxes (fromfile + fromlink), Select All, Summarize btn
+    Right pane : summary text viewer + saved summaries list
+    """
+
+    summarize_requested = Signal(dict)   # {stem: text}
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
+        self._file_checks: dict[str, object] = {}   # path -> QCheckBox
         self._build_ui()
+        self._setup_watcher()
+        self._refresh_files()
+        self._refresh_summaries()
 
     def _build_ui(self) -> None:
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(Spacing.XL, Spacing.XL, Spacing.XL, Spacing.XL)
-        layout.setSpacing(Spacing.MD)
+        root = QHBoxLayout(self)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(0)
 
-        header = QHBoxLayout()
-        title = QLabel(Strings.NAV_SUMMARIZE)
-        title.setFont(Fonts.heading())
+        # ── Left pane: file selection ──────────────────────────────────────────
+        left = QWidget()
+        left.setMinimumWidth(220)
+        left.setMaximumWidth(300)
+        left.setStyleSheet(
+            f"background: {Colors.SURFACE_MID};"            f"border-right: 1px solid {Colors.BORDER_DEFAULT};"
+        )
+        lv = QVBoxLayout(left)
+        lv.setContentsMargins(Spacing.MD, Spacing.XL, Spacing.MD, Spacing.XL)
+        lv.setSpacing(Spacing.SM)
 
-        run_btn = QPushButton("Run Summarize")
-        run_btn.setObjectName("FilesBtn")
-        run_btn.setFont(Fonts.label())
-        run_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        run_btn.setFixedHeight(34)
-        run_btn.clicked.connect(self.summarize_requested)
+        title_lbl = QLabel("SUMMARIZE")
+        title_lbl.setFont(Fonts.heading())
+        title_lbl.setStyleSheet(f"color: {Colors.TEXT_PRIMARY};")
+        lv.addWidget(title_lbl)
 
-        header.addWidget(title)
-        header.addStretch()
-        header.addWidget(run_btn)
+        sub_lbl = QLabel("SELECT FILES TO SUMMARIZE")
+        sub_lbl.setFont(Fonts.body())
+        sub_lbl.setStyleSheet(f"color: {Colors.TEXT_SECONDARY};")
+        lv.addWidget(sub_lbl)
+
+        line = QFrame()
+        line.setFrameShape(QFrame.Shape.HLine)
+        line.setStyleSheet(f"color: {Colors.BORDER_DEFAULT};")
+        lv.addWidget(line)
+
+        # Status
+        self._status_lbl = QLabel("")
+        self._status_lbl.setFont(Fonts.body())
+        self._status_lbl.setStyleSheet(f"color: {Colors.TEXT_ACCENT};")
+        self._status_lbl.setWordWrap(True)
+        self._status_lbl.setVisible(False)
+        lv.addWidget(self._status_lbl)
+
+        # Select All
+        from PySide6.QtWidgets import QCheckBox, QScrollArea
+        self._select_all = QCheckBox("  Select All")
+        self._select_all.setFont(Fonts.label())
+        self._select_all.setStyleSheet(f"color: {Colors.TEXT_PRIMARY};")
+        self._select_all.stateChanged.connect(self._on_select_all)
+        lv.addWidget(self._select_all)
+
+        # Scrollable checkbox list
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setStyleSheet("QScrollArea { border: none; background: transparent; }")
+
+        self._cb_container = QWidget()
+        self._cb_container.setStyleSheet("background: transparent;")
+        self._cb_vbox = QVBoxLayout(self._cb_container)
+        self._cb_vbox.setContentsMargins(Spacing.XS, 0, 0, 0)
+        self._cb_vbox.setSpacing(Spacing.XS)
+        self._cb_vbox.addStretch()
+        scroll.setWidget(self._cb_container)
+        lv.addWidget(scroll)
+
+        # Summarize button
+        self._summarize_btn = QPushButton("  Summarize")
+        self._summarize_btn.setObjectName("UploadFab")
+        self._summarize_btn.setFont(Fonts.upload_button())
+        self._summarize_btn.setFixedHeight(44)
+        self._summarize_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._summarize_btn.clicked.connect(self._on_summarize)
+        lv.addWidget(self._summarize_btn)
+
+        # ── Right pane: two sections ───────────────────────────────────────────
+        right = QWidget()
+        rv = QVBoxLayout(right)
+        rv.setContentsMargins(Spacing.XL, Spacing.XL, Spacing.XL, Spacing.XL)
+        rv.setSpacing(Spacing.MD)
+
+        splitter = QSplitter(Qt.Orientation.Vertical)
+        splitter.setHandleWidth(4)
+        splitter.setStyleSheet(
+            f"QSplitter::handle {{ background: {Colors.BORDER_DEFAULT}; }}"
+        )
+
+        # Top: current summary viewer
+        top_widget = QWidget()
+        top_widget.setStyleSheet("background: transparent;")
+        tv = QVBoxLayout(top_widget)
+        tv.setContentsMargins(0, 0, 0, 0)
+        tv.setSpacing(Spacing.XS)
+
+        viewer_hdr = QHBoxLayout()
+        viewer_title = QLabel("Summary")
+        viewer_title.setFont(Fonts.label())
+        viewer_title.setStyleSheet(f"color: {Colors.TEXT_SECONDARY};")
+        self._summary_source = QLabel("")
+        self._summary_source.setFont(Fonts.body())
+        self._summary_source.setStyleSheet(f"color: {Colors.TEXT_PLACEHOLDER}; font-size: 10px;")
+        viewer_hdr.addWidget(viewer_title)
+        viewer_hdr.addStretch()
+        viewer_hdr.addWidget(self._summary_source)
+        tv.addLayout(viewer_hdr)
 
         self._text_area = QTextEdit()
         self._text_area.setReadOnly(True)
         self._text_area.setFont(Fonts.body())
-        self._text_area.setPlaceholderText(Strings.SUMMARIZE_EMPTY)
+        self._text_area.setPlaceholderText("Select files and click Summarize to generate a summary…")
+        self._text_area.setStyleSheet(f"""
+            QTextEdit {{
+                background: {Colors.SURFACE_MID};
+                color: {Colors.TEXT_PRIMARY};
+                border: 1px solid {Colors.BORDER_DEFAULT};
+                border-radius: {Radius.MD}px;
+                padding: {Spacing.MD}px;
+            }}
+        """)
+        tv.addWidget(self._text_area)
+        splitter.addWidget(top_widget)
 
-        layout.addLayout(header)
-        layout.addWidget(self._text_area)
+        # Bottom: saved summaries list
+        bottom_widget = QWidget()
+        bottom_widget.setStyleSheet("background: transparent;")
+        bv = QVBoxLayout(bottom_widget)
+        bv.setContentsMargins(0, 0, 0, 0)
+        bv.setSpacing(Spacing.XS)
+
+        saved_hdr = QHBoxLayout()
+        saved_title = QLabel("Saved Summaries")
+        saved_title.setFont(Fonts.label())
+        saved_title.setStyleSheet(f"color: {Colors.TEXT_SECONDARY};")
+        refresh_btn = QPushButton("↻")
+        refresh_btn.setObjectName("FilesBtn")
+        refresh_btn.setFont(Fonts.label())
+        refresh_btn.setFixedSize(28, 28)
+        refresh_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        refresh_btn.clicked.connect(self._refresh_summaries)
+        saved_hdr.addWidget(saved_title)
+        saved_hdr.addStretch()
+        saved_hdr.addWidget(refresh_btn)
+        bv.addLayout(saved_hdr)
+
+        self._summary_list = QListWidget()
+        self._summary_list.setFont(Fonts.body())
+        self._summary_list.setMaximumHeight(160)
+        self._summary_list.setStyleSheet(f"""
+            QListWidget {{
+                background: {Colors.SURFACE_MID};
+                border: 1px solid {Colors.BORDER_DEFAULT};
+                border-radius: {Radius.SM}px;
+                padding: {Spacing.XS}px;
+            }}
+            QListWidget::item {{
+                padding: {Spacing.SM}px {Spacing.MD}px;
+                border-radius: {Radius.XS}px;
+                color: {Colors.TEXT_PRIMARY};
+            }}
+            QListWidget::item:hover {{ background: {Colors.SURFACE_LIGHT}; }}
+            QListWidget::item:selected {{
+                background: {Colors.SIDEBAR_ACTIVE};
+                border-left: 3px solid {Colors.ICON_ACTIVE};
+            }}
+        """)
+        self._summary_list.currentItemChanged.connect(self._on_summary_selected)
+        bv.addWidget(self._summary_list)
+        splitter.addWidget(bottom_widget)
+
+        splitter.setSizes([400, 160])
+        rv.addWidget(splitter)
+
+        root.addWidget(left)
+        root.addWidget(right, stretch=1)
+
+    def _setup_watcher(self) -> None:
+        from PySide6.QtCore import QFileSystemWatcher
+        self._watcher = QFileSystemWatcher(self)
+        for f in (Config.EXTRACTED_FILE, Config.EXTRACTED_LINK):
+            f.mkdir(parents=True, exist_ok=True)
+            self._watcher.addPath(str(f.resolve()))
+        Config.SUMMARIES_DIR.mkdir(parents=True, exist_ok=True)
+        self._summaries_watch_path = str(Config.SUMMARIES_DIR.resolve())
+        self._watcher.addPath(self._summaries_watch_path)
+        self._watcher.directoryChanged.connect(self._on_dir_changed)
+
+    def _on_dir_changed(self, path: str) -> None:
+        if path == self._summaries_watch_path:
+            self._refresh_summaries()
+        else:
+            self._refresh_files()
+
+    def _refresh_files(self) -> None:
+        from PySide6.QtWidgets import QCheckBox
+        # Clear
+        for i in reversed(range(self._cb_vbox.count() - 1)):
+            item = self._cb_vbox.itemAt(i)
+            if item and item.widget():
+                item.widget().deleteLater()
+                self._cb_vbox.removeItem(item)
+        self._file_checks.clear()
+
+        all_files = []
+        for folder in (Config.EXTRACTED_FILE, Config.EXTRACTED_LINK):
+            if folder.exists():
+                all_files.extend(
+                    sorted(folder.glob("*.txt"), key=lambda p: p.stat().st_mtime, reverse=True)
+                )
+
+        for fp in all_files:
+            tag = "📄" if fp.parent.name == "fromfile" else "🔗"
+            cb = QCheckBox(f"  {tag}  {fp.stem}")
+            cb.setFont(Fonts.body())
+            cb.setStyleSheet(f"""
+                QCheckBox {{
+                    color: {Colors.TEXT_PRIMARY};
+                    padding: {Spacing.XS}px;
+                }}
+                QCheckBox::indicator {{
+                    width: 15px; height: 15px;
+                    border: 2px solid {Colors.BORDER_DEFAULT};
+                    border-radius: {Radius.XS}px;
+                    background: {Colors.SURFACE_MID};
+                }}
+                QCheckBox::indicator:checked {{
+                    background: {Colors.ICON_ACTIVE};
+                    border-color: {Colors.ICON_ACTIVE};
+                }}
+            """)
+            self._file_checks[str(fp)] = cb
+            self._cb_vbox.insertWidget(self._cb_vbox.count() - 1, cb)
+
+    def _refresh_summaries(self) -> None:
+        self._summary_list.clear()
+        if not Config.SUMMARIES_DIR.exists():
+            return
+        files = sorted(
+            Config.SUMMARIES_DIR.glob("*_summarized*.txt"),
+            key=lambda p: p.stat().st_mtime, reverse=True
+        )
+        for f in files:
+            item = QListWidgetItem(f"📝  {f.stem}")
+            item.setData(Qt.ItemDataRole.UserRole, str(f))
+            self._summary_list.addItem(item)
+
+    def _on_select_all(self, state: int) -> None:
+        checked = state == Qt.CheckState.Checked.value
+        for cb in self._file_checks.values():
+            cb.setChecked(checked)
+
+    def _on_summarize(self) -> None:
+        selected = {p: cb for p, cb in self._file_checks.items() if cb.isChecked()}
+        if not selected:
+            self._set_status("Please select at least one file.")
+            return
+        source_texts = {}
+        for path_str in selected:
+            fp = Path(path_str)
+            try:
+                source_texts[fp.stem] = fp.read_text(encoding="utf-8")
+            except Exception:
+                pass
+        self._set_status(f"Summarizing {len(source_texts)} file(s)…")
+        self.summarize_requested.emit(source_texts)
+
+    def _on_summary_selected(self, current, _prev) -> None:
+        if not current:
+            return
+        fp = Path(current.data(Qt.ItemDataRole.UserRole))
+        try:
+            content = fp.read_text(encoding="utf-8")
+        except Exception as e:
+            content = f"[Could not read file: {e}]"
+        self._text_area.setPlainText(content)
+        self._summary_source.setText(fp.name)
+
+    def _set_status(self, text: str) -> None:
+        self._status_lbl.setText(text)
+        self._status_lbl.setVisible(bool(text))
+
+    # ── Public API ─────────────────────────────────────────────────────────────
 
     def set_text(self, text: str) -> None:
-        self._text_area.setPlainText(text)
+        """Called by main_window to show status or result."""
+        self._set_status(text)
+
+    def show_summary(self, path: str) -> None:
+        """Load and display a freshly saved summary, refresh the list."""
+        self._refresh_summaries()
+        fp = Path(path)
+        try:
+            content = fp.read_text(encoding="utf-8")
+        except Exception as e:
+            content = f"[Error reading summary: {e}]"
+        self._text_area.setPlainText(content)
+        self._summary_source.setText(fp.name)
+        self._set_status(f"Saved → {fp.name}")
+
+        # Auto-select the new entry in the list so the user can see it
+        for i in range(self._summary_list.count()):
+            item = self._summary_list.item(i)
+            if item and item.data(Qt.ItemDataRole.UserRole) == str(fp):
+                self._summary_list.setCurrentItem(item)
+                break
 
     def clear(self) -> None:
         self._text_area.clear()
-
-
-# ── Audio Panel ────────────────────────────────────────────────────────────────
-
-class AudioPanel(QWidget):
-    audio_requested = Signal()
-
-    def __init__(self, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
-        self._build_ui()
-
-    def _build_ui(self) -> None:
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(Spacing.XL, Spacing.XL, Spacing.XL, Spacing.XL)
-        layout.setSpacing(Spacing.MD)
-
-        header = QHBoxLayout()
-        title = QLabel(Strings.NAV_AUDIO)
-        title.setFont(Fonts.heading())
-
-        gen_btn = QPushButton("Generate Audio")
-        gen_btn.setObjectName("FilesBtn")
-        gen_btn.setFont(Fonts.label())
-        gen_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        gen_btn.setFixedHeight(34)
-        gen_btn.clicked.connect(self.audio_requested)
-
-        header.addWidget(title)
-        header.addStretch()
-        header.addWidget(gen_btn)
-
-        self._status = _placeholder_label(Strings.AUDIO_EMPTY)
-
-        layout.addLayout(header)
-        layout.addStretch()
-        layout.addWidget(self._status)
-        layout.addStretch()
-
-    def set_status(self, text: str) -> None:
-        self._status.setText(text)
+        self._summary_source.setText("")
+        self._set_status("")

@@ -564,7 +564,7 @@ class ResultView(QWidget):
         score = data["score"]
         total = data["total"]
         pct   = int(score / total * 100) if total else 0
-        self._score_label.setText(f"🎯  {score} / {total}  correct   ({pct}%)")
+        self._score_label.setText(f"{score} / {total}  correct   ({pct}%)")
         self._save_label.setText(f"Result saved → {result_path}")
 
         while self._bvbox.count() > 1:

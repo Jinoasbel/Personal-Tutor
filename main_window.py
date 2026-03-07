@@ -14,11 +14,12 @@ from PySide6.QtWidgets import (
 from pt_theme import Colors, Fonts, Strings, Layout, Spacing
 from ui.sidebar import Sidebar
 from ui.upload_dialog import UploadDialog
-from ui.panels import ExtractedPanel, SummarizePanel, AudioPanel
+from ui.panels import ExtractedPanel, SummarizePanel
+from ui.audio_panel import AudioPanel
 from ui.ask_panel import AskPanel
 from ui.settings_panel import SettingsPanel
 from core.app_state import AppState
-from core.workers import OCRWorker, LinkOCRWorker, SummaryWorker, AudioWorker
+from core.workers import OCRWorker, LinkOCRWorker, SummaryWorker, LessonWorker, VoiceSampleWorker
 from app_config import Config
 
 
@@ -30,19 +31,46 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(Layout.WINDOW_MIN_W, Layout.WINDOW_MIN_H)
         self.resize(Layout.WINDOW_DEF_W, Layout.WINDOW_DEF_H)
 
-        self._state        = AppState()
-        self._ocr_worker:  OCRWorker     | None = None
-        self._link_worker: LinkOCRWorker | None = None
-        self._sum_worker:  SummaryWorker | None = None
-        self._aud_worker:  AudioWorker   | None = None
+        self._state          = AppState()
+        self._ocr_worker:    OCRWorker     | None = None
+        self._link_worker:   LinkOCRWorker | None = None
+        self._sum_worker:    SummaryWorker | None = None
+        self._lesson_worker:  LessonWorker       | None = None
+        self._sample_worker:  VoiceSampleWorker | None = None
+        self._script_path:    str = ""
 
         for d in (
             Config.EXTRACTED_FILE, Config.EXTRACTED_LINK,
             Config.QUESTIONS_DIR,  Config.RESULTS_DIR,
+            Config.SUMMARIES_DIR,  Config.LESSONS_DIR,
+            Config.AUDIO_DIR,      Config.TEMP_DIR,
         ):
             d.mkdir(parents=True, exist_ok=True)
 
         self._build_ui()
+        self._start_voice_sample_worker()
+
+    def _start_voice_sample_worker(self) -> None:
+        """Generate missing voice samples once at startup in background."""
+        from pathlib import Path
+        from core.audio_generator import VOICES
+        samples_dir = Path("assets") / "voice_samples"
+        # Check if any samples are missing
+        missing = [
+            k for k in VOICES
+            if not (samples_dir / f"{k}.mp3").exists()
+            and not (samples_dir / f"{k}.wav").exists()
+        ]
+        if not missing:
+            # All samples exist — just enable all buttons immediately
+            for key in VOICES:
+                self._panel_audio._voice_selector.on_sample_ready(key)
+            return
+        self._sample_worker = VoiceSampleWorker(VOICES, samples_dir, parent=self)
+        self._sample_worker.sample_ready.connect(
+            self._panel_audio._voice_selector.on_sample_ready
+        )
+        self._sample_worker.start()
 
     def _build_ui(self) -> None:
         central = QWidget()
@@ -66,12 +94,12 @@ class MainWindow(QMainWindow):
         cv.setSpacing(0)
 
         # Panels
-        self._stack            = QStackedWidget()
-        self._panel_extracted  = ExtractedPanel()
-        self._panel_summarize  = SummarizePanel()
-        self._panel_audio      = AudioPanel()
-        self._panel_ask        = AskPanel()
-        self._panel_settings   = SettingsPanel()
+        self._stack           = QStackedWidget()
+        self._panel_extracted = ExtractedPanel()
+        self._panel_summarize = SummarizePanel()
+        self._panel_audio     = AudioPanel()
+        self._panel_ask       = AskPanel()
+        self._panel_settings  = SettingsPanel()
 
         self._stack.addWidget(self._panel_extracted)   # 0
         self._stack.addWidget(self._panel_summarize)   # 1
@@ -110,11 +138,15 @@ class MainWindow(QMainWindow):
         self._upload_dialog.submitted.connect(self._on_upload_submitted)
 
         self._panel_summarize.summarize_requested.connect(self._run_summarize)
-        self._panel_audio.audio_requested.connect(self._run_audio)
+        self._panel_audio.lesson_requested.connect(self._run_lesson)
+
+    # ── Panel switching ────────────────────────────────────────────────────────
 
     def _switch_panel(self, panel_id: str) -> None:
         self._stack.setCurrentIndex(self._panel_map.get(panel_id, 0))
         self._state.active_panel = panel_id
+
+    # ── Upload ─────────────────────────────────────────────────────────────────
 
     def _open_upload_dialog(self) -> None:
         self._upload_dialog.reset()
@@ -127,6 +159,8 @@ class MainWindow(QMainWindow):
             self._run_ocr(files)
         if links:
             self._run_link_extraction(links)
+
+    # ── OCR ────────────────────────────────────────────────────────────────────
 
     def _run_ocr(self, files: list[Path]) -> None:
         if self._ocr_worker and self._ocr_worker.isRunning():
@@ -144,51 +178,74 @@ class MainWindow(QMainWindow):
 
     def _on_ocr_done(self, text: str) -> None:
         self._state.extracted_text = text
-        self._panel_extracted.set_text(text)
+        self._panel_extracted.set_text("Extraction complete.")
+        self._panel_extracted._refresh_file_list()
+
+    # ── Link extraction ────────────────────────────────────────────────────────
 
     def _run_link_extraction(self, links: list[str]) -> None:
         if self._link_worker and self._link_worker.isRunning():
             return
+        self._panel_extracted.set_text(f"Fetching {len(links)} link(s)…")
+        self._sidebar.select_panel("extracted")
+        self._switch_panel("extracted")
         self._link_worker = LinkOCRWorker(links, Config.EXTRACTED_LINK, parent=self)
         self._link_worker.progress.connect(self._panel_extracted.set_text)
-        self._link_worker.result.connect(self._on_ocr_done)
+        self._link_worker.result.connect(self._on_link_done)
         self._link_worker.error.connect(
-            lambda e: self._panel_extracted.set_text(f"Link extraction failed:\n\n{e}")
+            lambda e: self._panel_extracted.set_text(f"Link extraction failed: {e}")
         )
         self._link_worker.start()
 
-    def _run_summarize(self) -> None:
-        if not self._state.has_content():
-            self._panel_summarize.set_text(Strings.EXTRACTED_EMPTY)
+    def _on_link_done(self, _combined: str) -> None:
+        self._panel_extracted.set_text("Fetched — files saved to Extracted.")
+        self._panel_extracted._refresh_file_list()
+
+    # ── Summarize ──────────────────────────────────────────────────────────────
+
+    def _run_summarize(self, source_texts: dict) -> None:
+        if not source_texts:
+            self._panel_summarize.set_text("No files selected.")
             return
         if self._sum_worker and self._sum_worker.isRunning():
             return
-        self._panel_summarize.set_text(Strings.MSG_SUMMARIZING)
-        self._sum_worker = SummaryWorker(self._state.extracted_text, parent=self)
+        self._panel_summarize.set_text("Summarizing…")
+        self._sum_worker = SummaryWorker(source_texts, parent=self)
+        self._sum_worker.progress.connect(self._panel_summarize.set_text)
         self._sum_worker.result.connect(self._on_summary_done)
         self._sum_worker.error.connect(
             lambda e: self._panel_summarize.set_text(f"Error: {e}")
         )
         self._sum_worker.start()
 
-    def _on_summary_done(self, text: str) -> None:
-        self._state.summary_text = text
-        self._panel_summarize.set_text(text)
+    def _on_summary_done(self, path: str) -> None:
+        self._panel_summarize.show_summary(path)
 
-    def _run_audio(self) -> None:
-        if not self._state.has_content():
-            self._panel_audio.set_status(Strings.EXTRACTED_EMPTY)
+    # ── Audio Lesson ───────────────────────────────────────────────────────────
+
+    def _run_lesson(self, source_texts: dict) -> None:
+        if not source_texts:
+            self._panel_audio.show_error("No files selected.")
             return
-        if self._aud_worker and self._aud_worker.isRunning():
+        if self._lesson_worker and self._lesson_worker.isRunning():
             return
-        self._panel_audio.set_status(Strings.MSG_AUDIO_GEN)
-        self._aud_worker = AudioWorker(
-            self._state.extracted_text, Config.AUDIO_OUTPUT, parent=self
-        )
-        self._aud_worker.result.connect(
-            lambda p: self._panel_audio.set_status(f"Audio saved: {p}")
-        )
-        self._aud_worker.error.connect(
-            lambda e: self._panel_audio.set_status(f"Error: {e}")
-        )
-        self._aud_worker.start()
+
+        voice = self._panel_audio.selected_voice()
+        self._panel_audio.show_busy("Writing lesson script…")
+        self._lesson_worker = LessonWorker(source_texts, voice=voice, parent=self)
+        self._lesson_worker.progress.connect(self._panel_audio.update_progress)
+        self._lesson_worker.script_ready.connect(self._on_script_ready)
+        self._lesson_worker.result.connect(self._on_lesson_done)
+        self._lesson_worker.error.connect(self._on_lesson_error)
+        self._lesson_worker.start()
+
+    def _on_script_ready(self, script_path: str) -> None:
+        """Script is done — store it while TTS continues."""
+        self._script_path = script_path
+        self._panel_audio.update_progress("Script ready — generating audio…")
+
+    def _on_lesson_done(self, audio_path: str) -> None:
+        self._panel_audio.show_ready(self._script_path, audio_path)
+
+    def _on_lesson_error(self, message: str) -> None:
+        self._panel_audio.show_error(message)
