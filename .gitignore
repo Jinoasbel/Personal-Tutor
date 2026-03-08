@@ -1,0 +1,23 @@
+# Create/update .gitignore to exclude build artifacts
+@"
+dist/
+build/
+__pycache__/
+*.pyc
+*.pyo
+ocr_env/
+*.log
+"@ | Set-Content .gitignore
+
+# Stage only source files (not dist/build)
+git add .gitignore
+git add main.py main_window.py app_config.py PersonalTutor.spec
+git add core/ ui/ pt_theme/ icons/ assets/ installer/
+git add requirements.txt setup.py pyproject.toml README.md LICENSE 2>$null
+
+# Verify dist/ and build/ are NOT staged
+git status
+
+# Commit and push
+git commit -m "push source files only"
+git push origin main

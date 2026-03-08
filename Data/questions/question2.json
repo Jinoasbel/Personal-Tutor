@@ -1,0 +1,120 @@
+{
+  "provider": "gemini",
+  "model": "gemini-2.5-flash",
+  "source_files": [
+    "US-Israel strikes on Iran trigger widening regional conflict"
+  ],
+  "generated_at": "2026-03-08T09:17:54.853653",
+  "questions": [
+    {
+      "id": 1,
+      "question": "When did the initial joint US and Israeli military strikes on Iran take place?",
+      "options": [
+        "A. March 2nd",
+        "B. February 28th",
+        "C. March 4th",
+        "D. March 5th"
+      ],
+      "answer": "B"
+    },
+    {
+      "id": 2,
+      "question": "Which high-profile individual was reported among the casualties in Iran following the initial strikes?",
+      "options": [
+        "A. The Iranian President",
+        "B. Iran's Supreme Leader",
+        "C. The Foreign Minister of Iran",
+        "D. The Head of Iran's Revolutionary Guard"
+      ],
+      "answer": "B"
+    },
+    {
+      "id": 3,
+      "question": "In its retaliation, what types of targets did Iran specifically strike in countries hosting US military bases?",
+      "options": [
+        "A. Civilian airports, shopping malls, and cultural heritage sites",
+        "B. US embassies, critical oil refineries, and civilian hotels",
+        "C. Agricultural farmlands, fishing ports, and university campuses",
+        "D. Hospitals, schools, and public transportation hubs"
+      ],
+      "answer": "B"
+    },
+    {
+      "id": 4,
+      "question": "What event triggered Hezbollah's entry into the conflict on March 2nd?",
+      "options": [
+        "A. An Israeli naval blockade",
+        "B. The killing of Iran's Supreme Leader",
+        "C. A US drone strike in Syria",
+        "D. The attack on a British air base in Cyprus"
+      ],
+      "answer": "B"
+    },
+    {
+      "id": 5,
+      "question": "Which European nation's military asset on Cyprus was reported to have been attacked on March 2nd?",
+      "options": [
+        "A. French",
+        "B. German",
+        "C. British",
+        "D. Italian"
+      ],
+      "answer": "C"
+    },
+    {
+      "id": 6,
+      "question": "How did Turkey become directly involved in the conflict on March 4th?",
+      "options": [
+        "A. Turkish forces launched strikes into Iran",
+        "B. Turkey sent naval support to Sri Lanka",
+        "C. Its NATO air defense systems successfully downed an Iranian missile",
+        "D. Turkish diplomatic personnel were attacked in a neighboring country"
+      ],
+      "answer": "C"
+    },
+    {
+      "id": 7,
+      "question": "A US submarine reportedly sank an Iranian warship resulting in over 80 deaths. Where did this naval engagement occur?",
+      "options": [
+        "A. In the Persian Gulf",
+        "B. Off the coast of Sri Lanka",
+        "C. In the Mediterranean Sea",
+        "D. Off the coast of Yemen"
+      ],
+      "answer": "B"
+    },
+    {
+      "id": 8,
+      "question": "Which country reported drones falling near an international airport on March 5th, becoming the latest nation drawn into the crisis?",
+      "options": [
+        "A. Lebanon",
+        "B. Syria",
+        "C. Azerbaijan",
+        "D. Jordan"
+      ],
+      "answer": "C"
+    },
+    {
+      "id": 9,
+      "question": "According to the 'Key Takeaways,' what best describes the escalation of the conflict?",
+      "options": [
+        "A. It was slow and contained, lasting several months.",
+        "B. It rapidly escalated from initial strikes to a multi-front regional crisis within a single week.",
+        "C. It primarily involved diplomatic actions rather than military engagements.",
+        "D. The geographical scope remained limited to Iran and Israel."
+      ],
+      "answer": "B"
+    },
+    {
+      "id": 10,
+      "question": "Besides state actors like the US, Israel, and Iran, which non-state actor is explicitly mentioned as becoming involved in the conflict?",
+      "options": [
+        "A. Hamas",
+        "B. Al-Qaeda",
+        "C. Hezbollah",
+        "D. ISIS"
+      ],
+      "answer": "C"
+    }
+  ]
+}

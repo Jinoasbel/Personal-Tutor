@@ -191,7 +191,16 @@ class NewQuestionsView(QWidget):
         self._list_vbox.setSpacing(Spacing.SM)
         self._list_vbox.addStretch()
         scroll.setWidget(self._list_widget)
-        root.addWidget(scroll)
+        root.addWidget(scroll, stretch=1)
+
+        # Ask button — pinned to bottom
+        self._ask_btn = QPushButton("  Generate Questions")
+        self._ask_btn.setObjectName("UploadFab")
+        self._ask_btn.setFont(Fonts.upload_button())
+        self._ask_btn.setFixedHeight(44)
+        self._ask_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._ask_btn.clicked.connect(self.ask)
+        root.addWidget(self._ask_btn)
 
     def _setup_watcher(self) -> None:
         self._watcher = QFileSystemWatcher(self)
@@ -255,12 +264,16 @@ class NewQuestionsView(QWidget):
                 source_texts[fp.stem] = fp.read_text(encoding="utf-8")
             except Exception:
                 pass
+        self._ask_btn.setEnabled(False)
         self.set_status(f"Generating questions for {len(source_texts)} file(s)…")
         self.ask_requested.emit(source_texts)
 
     def set_status(self, text: str) -> None:
         self._status.setText(text)
         self._status.setVisible(bool(text))
+        # Re-enable button when generation is complete or errored
+        if text and not text.startswith("Generating"):
+            self._ask_btn.setEnabled(True)
 
 
 # ── SAVED QUESTIONS view ───────────────────────────────────────────────────────
@@ -297,7 +310,7 @@ class SavedQuestionsView(QWidget):
         self._list_vbox.setSpacing(Spacing.SM)
         self._list_vbox.addStretch()
         scroll.setWidget(self._list_widget)
-        root.addWidget(scroll)
+        root.addWidget(scroll, stretch=1)
 
     def _setup_watcher(self) -> None:
         self._watcher = QFileSystemWatcher(self)
@@ -564,7 +577,7 @@ class ResultView(QWidget):
         score = data["score"]
         total = data["total"]
         pct   = int(score / total * 100) if total else 0
-        self._score_label.setText(f"{score} / {total}  correct   ({pct}%)")
+        self._score_label.setText(f"🎯  {score} / {total}  correct   ({pct}%)")
         self._save_label.setText(f"Result saved → {result_path}")
 
         while self._bvbox.count() > 1:

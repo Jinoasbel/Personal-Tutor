@@ -1,0 +1,78 @@
+{
+  "question_file": "question2.json",
+  "attempted_at": "2026-03-08T09:19:35.844304",
+  "score": 7,
+  "total": 10,
+  "answers": [
+    {
+      "id": 1,
+      "question": "When did the initial joint US and Israeli military strikes on Iran take place?",
+      "selected": "B",
+      "correct": "B",
+      "is_correct": true
+    },
+    {
+      "id": 2,
+      "question": "Which high-profile individual was reported among the casualties in Iran following the initial strikes?",
+      "selected": "B",
+      "correct": "B",
+      "is_correct": true
+    },
+    {
+      "id": 3,
+      "question": "In its retaliation, what types of targets did Iran specifically strike in countries hosting US military bases?",
+      "selected": "B",
+      "correct": "B",
+      "is_correct": true
+    },
+    {
+      "id": 4,
+      "question": "What event triggered Hezbollah's entry into the conflict on March 2nd?",
+      "selected": "D",
+      "correct": "B",
+      "is_correct": false
+    },
+    {
+      "id": 5,
+      "question": "Which European nation's military asset on Cyprus was reported to have been attacked on March 2nd?",
+      "selected": "C",
+      "correct": "C",
+      "is_correct": true
+    },
+    {
+      "id": 6,
+      "question": "How did Turkey become directly involved in the conflict on March 4th?",
+      "selected": "C",
+      "correct": "C",
+      "is_correct": true
+    },
+    {
+      "id": 7,
+      "question": "A US submarine reportedly sank an Iranian warship resulting in over 80 deaths. Where did this naval engagement occur?",
+      "selected": "B",
+      "correct": "B",
+      "is_correct": true
+    },
+    {
+      "id": 8,
+      "question": "Which country reported drones falling near an international airport on March 5th, becoming the latest nation drawn into the crisis?",
+      "selected": "A",
+      "correct": "C",
+      "is_correct": false
+    },
+    {
+      "id": 9,
+      "question": "According to the 'Key Takeaways,' what best describes the escalation of the conflict?",
+      "selected": "B",
+      "correct": "B",
+      "is_correct": true
+    },
+    {
+      "id": 10,
+      "question": "Besides state actors like the US, Israel, and Iran, which non-state actor is explicitly mentioned as becoming involved in the conflict?",
+      "selected": "B",
+      "correct": "C",
+      "is_correct": false
+    }
+  ]
+}

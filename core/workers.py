@@ -8,6 +8,13 @@ Extracted text is saved to disk automatically:
 """
 
 from __future__ import annotations
+
+import logging as _logging_guard
+if not _logging_guard.root.handlers:
+    _logging_guard.root.addHandler(_logging_guard.NullHandler())
+if _logging_guard.lastResort is None:
+    _logging_guard.lastResort = _logging_guard.StreamHandler()
+del _logging_guard
 import re
 from pathlib import Path
 
@@ -273,8 +280,10 @@ class LessonWorker(QThread):
             self.result.emit(str(final_path))
 
         except Exception as exc:
-            import traceback
-            traceback.print_exc()
+            import traceback, logging
+            logging.getLogger(__name__).critical(
+                "LessonWorker FAILED:\n" + traceback.format_exc()
+            )
             self.error.emit(str(exc))
 
 
@@ -303,10 +312,13 @@ class VoiceSampleWorker(QThread):
         self._samples_dir = samples_dir
 
     def run(self) -> None:
+        import logging as _log
+        _logger = _log.getLogger(__name__)
+        _logger.info(f"VoiceSampleWorker starting — samples dir: {self._samples_dir}")
         try:
             from kokoro import KPipeline
         except ImportError:
-            # Kokoro not installed — skip silently
+            _logger.warning("VoiceSampleWorker: kokoro not found — skipping")
             self.all_done.emit()
             return
 
@@ -318,6 +330,13 @@ class VoiceSampleWorker(QThread):
             return
 
         self._samples_dir.mkdir(parents=True, exist_ok=True)
+
+        # Suppress Kokoro / huggingface loggers (crash with NoneType in frozen exe)
+        import logging as _logging
+        for _noisy in ("kokoro", "phonemizer", "transformers",
+                       "huggingface_hub", "filelock"):
+            _logging.getLogger(_noisy).setLevel(_logging.ERROR)
+            _logging.getLogger(_noisy).propagate = False
 
         # Load pipeline once for all voices
         try:

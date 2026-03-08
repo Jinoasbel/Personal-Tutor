@@ -1,39 +1,39 @@
 """
 app_config.py — Application-level configuration constants.
+
+Paths are resolved relative to the exe when frozen (PyInstaller)
+or relative to the project root when running from source.
 """
 
+import sys
 from pathlib import Path
+
+
+def _root() -> Path:
+    """Directory next to the exe or next to main.py."""
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).parent
+    return Path(__file__).resolve().parent
 
 
 class Config:
     # ── Paths ─────────────────────────────────────────────────────────────────
-    DATA_DIR          = Path("Data")
+    DATA_DIR          = _root() / "Data"
     TEMP_DIR          = DATA_DIR / "temp"
 
     EXTRACTED_DIR     = DATA_DIR / "extracted"
     EXTRACTED_FILE    = EXTRACTED_DIR / "fromfile"
     EXTRACTED_LINK    = EXTRACTED_DIR / "fromlink"
 
-    # Generated question sets saved as question1.json, question2.json …
     QUESTIONS_DIR     = DATA_DIR / "questions"
-
-    # Quiz attempt results saved as result1.json, result2.json …
     RESULTS_DIR       = DATA_DIR / "results"
-
-    # Summaries saved as <name>_summarized.txt
     SUMMARIES_DIR     = DATA_DIR / "summaries"
-
-    # Lesson teaching scripts saved as <name>_lesson.txt
     LESSONS_DIR       = DATA_DIR / "lessons"
-
-    # Generated audio lessons saved as <name>_lesson.mp3
     AUDIO_DIR         = DATA_DIR / "audio"
-
-    # Legacy single audio output (kept for compatibility)
-    AUDIO_OUTPUT      = AUDIO_DIR / "output_audio.mp3"
+    AUDIO_OUTPUT      = AUDIO_DIR / "output_audio.wav"
 
     # ── AI Service ────────────────────────────────────────────────────────────
-    AI_PROVIDER       = "claude"
+    AI_PROVIDER       = "anthropic"
     AI_API_KEY        = ""
     AI_MODEL_CLAUDE   = "claude-sonnet-4-20250514"
     AI_MODEL_OPENAI   = "gpt-4o"

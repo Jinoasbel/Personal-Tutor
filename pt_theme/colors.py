@@ -6,60 +6,122 @@ No color values should appear anywhere else in the codebase.
 
 
 class Colors:
+    #Theme: Midnight Indigo (Deep Focus Dark Mode) ───────────────────────────────────────────────────────────────
     # ── Base / Background ─────────────────────────────────────────────────────
-    BG_PRIMARY        = "#4A5568"   # Main app background (dark grey-blue)
-    BG_SECONDARY      = "#3D4A5C"   # Sidebar / panel background
-    BG_TERTIARY       = "#2D3748"   # Deeper panel / overlay background
+    BG_PRIMARY        = "#0F172A"   # Main app background (deep navy)
+    BG_SECONDARY      = "#1E293B"   # Sidebar / panel background
+    BG_TERTIARY       = "#334155"   # Deeper panel / overlay background
 
     # ── Surface / Card ────────────────────────────────────────────────────────
-    SURFACE_DARK      = "#1A202C"   # Dark input fields, button faces
-    SURFACE_MID       = "#2D3748"   # Mid-tone cards, scrollable areas
-    SURFACE_LIGHT     = "#4A5568"   # Hover state for surface elements
+    SURFACE_DARK      = "#020617"   # Dark input fields, button faces
+    SURFACE_MID       = "#1E293B"   # Mid-tone cards, scrollable areas
+    SURFACE_LIGHT     = "#334155"   # Hover state for surface elements
 
     # ── Sidebar ───────────────────────────────────────────────────────────────
-    SIDEBAR_BG        = "#6B7280"   # Sidebar background (light grey)
-    SIDEBAR_BTN_BG    = "#4B5563"   # Sidebar nav button background
-    SIDEBAR_BTN_HOVER = "#374151"   # Sidebar button hover
-    SIDEBAR_ACTIVE    = "#374151"   # Active/selected nav button
+    SIDEBAR_BG        = "#1E293B"   # Sidebar background
+    SIDEBAR_BTN_BG    = "#334155"   # Sidebar nav button background
+    SIDEBAR_BTN_HOVER = "#475569"   # Sidebar button hover
+    SIDEBAR_ACTIVE    = "#475569"   # Active/selected nav button
 
     # ── Upload Panel ──────────────────────────────────────────────────────────
-    UPLOAD_PANEL_BG   = "#4A6080"   # Upload dialog panel background (blue-grey)
-    LINK_INPUT_BG     = "#1A202C"   # Link entry field background
-    LINK_ICON_BG      = "#3D4A5C"   # Link icon container background
+    UPLOAD_PANEL_BG   = "#1E293B"   # Upload dialog panel background
+    LINK_INPUT_BG     = "#020617"   # Link entry field background
+    LINK_ICON_BG      = "#334155"   # Link icon container background
 
     # ── Buttons ───────────────────────────────────────────────────────────────
-    BTN_PRIMARY_BG    = "#2D3748"   # Primary button (SUBMIT, FILES) background
-    BTN_PRIMARY_HOVER = "#374151"   # Primary button hover
-    BTN_ADD_BG        = "#374151"   # Add (+) button background
-    BTN_ADD_HOVER     = "#4B5563"   # Add (+) button hover
-    BTN_UPLOAD_BG     = "#4B5563"   # UPLOAD FAB background
-    BTN_UPLOAD_HOVER  = "#374151"   # UPLOAD FAB hover
-    BTN_UPLOAD_BORDER = "#6B7280"   # UPLOAD FAB border
+    BTN_PRIMARY_BG    = "#3B82F6"   # Primary button (vibrant focus blue)
+    BTN_PRIMARY_HOVER = "#2563EB"   # Primary button hover
+    BTN_ADD_BG        = "#334155"   # Add (+) button background
+    BTN_ADD_HOVER     = "#475569"   # Add (+) button hover
+    BTN_UPLOAD_BG     = "#334155"   # UPLOAD FAB background
+    BTN_UPLOAD_HOVER  = "#475569"   # UPLOAD FAB hover
+    BTN_UPLOAD_BORDER = "#475569"   # UPLOAD FAB border
 
     # ── Text ──────────────────────────────────────────────────────────────────
-    TEXT_PRIMARY      = "#F9FAFB"   # Main white text
-    TEXT_SECONDARY    = "#D1D5DB"   # Secondary/muted text
-    TEXT_PLACEHOLDER  = "#6B7280"   # Placeholder text in inputs
-    TEXT_DISABLED     = "#4B5563"   # Disabled state text
-    TEXT_ACCENT       = "#93C5FD"   # Accent / highlighted text (light blue)
+    TEXT_PRIMARY      = "#F8FAFC"   # Main white text
+    TEXT_SECONDARY    = "#94A3B8"   # Secondary/muted text
+    TEXT_PLACEHOLDER  = "#64748B"   # Placeholder text in inputs
+    TEXT_DISABLED     = "#475569"   # Disabled state text
+    TEXT_ACCENT       = "#60A5FA"   # Accent / highlighted text (bright blue)
 
     # ── Icons ─────────────────────────────────────────────────────────────────
-    ICON_DEFAULT      = "#9CA3AF"   # Default icon color (grey)
-    ICON_ACTIVE       = "#BFDBFE"   # Active icon color (light blue)
-    ICON_FOLDER       = "#3B82F6"   # Folder icon (blue)
+    ICON_DEFAULT      = "#94A3B8"   # Default icon color
+    ICON_ACTIVE       = "#60A5FA"   # Active icon color
+    ICON_FOLDER       = "#3B82F6"   # Folder icon
 
     # ── Borders & Dividers ────────────────────────────────────────────────────
-    BORDER_DEFAULT    = "#374151"   # Default border/divider
+    BORDER_DEFAULT    = "#334155"   # Default border/divider
     BORDER_FOCUS      = "#60A5FA"   # Focused input border
-    BORDER_SUBTLE     = "#2D3748"   # Very subtle border
+    BORDER_SUBTLE     = "#1E293B"   # Very subtle border
 
     # ── Scrollbar ─────────────────────────────────────────────────────────────
-    SCROLLBAR_BG      = "#2D3748"
-    SCROLLBAR_HANDLE  = "#4B5563"
-    SCROLLBAR_HOVER   = "#6B7280"
+    SCROLLBAR_BG      = "#0F172A"
+    SCROLLBAR_HANDLE  = "#334155"
+    SCROLLBAR_HOVER   = "#475569"
 
     # ── State Colors ──────────────────────────────────────────────────────────
-    SUCCESS           = "#34D399"   # Success green
-    WARNING           = "#FBBF24"   # Warning amber
-    ERROR             = "#F87171"   # Error red
-    INFO              = "#60A5FA"   # Info blue
+    SUCCESS           = "#10B981"   # Success green
+    WARNING           = "#F59E0B"   # Warning amber
+    ERROR             = "#EF4444"   # Error red
+    INFO              = "#3B82F6"   # Info blue
+
+
+    # #Bright
+    # #---Theme: Parchment & Ink (Clean Light Mode)──────────────────────────────────────────────────────────────
+    # # ── Base / Background ─────────────────────────────────────────────────────
+    # BG_PRIMARY        = "#F8FAFC"   # Main app background (soft off-white)
+    # BG_SECONDARY      = "#F1F5F9"   # Sidebar / panel background
+    # BG_TERTIARY       = "#E2E8F0"   # Deeper panel / overlay background
+
+    # # ── Surface / Card ────────────────────────────────────────────────────────
+    # SURFACE_DARK      = "#FFFFFF"   # White input fields, bright cards
+    # SURFACE_MID       = "#F1F5F9"   # Mid-tone cards, scrollable areas
+    # SURFACE_LIGHT     = "#E2E8F0"   # Hover state for surface elements
+
+    # # ── Sidebar ───────────────────────────────────────────────────────────────
+    # SIDEBAR_BG        = "#F1F5F9"   # Sidebar background
+    # SIDEBAR_BTN_BG    = "#E2E8F0"   # Sidebar nav button background
+    # SIDEBAR_BTN_HOVER = "#CBD5E1"   # Sidebar button hover
+    # SIDEBAR_ACTIVE    = "#CBD5E1"   # Active/selected nav button
+
+    # # ── Upload Panel ──────────────────────────────────────────────────────────
+    # UPLOAD_PANEL_BG   = "#F1F5F9"   # Upload dialog panel background
+    # LINK_INPUT_BG     = "#FFFFFF"   # Link entry field background
+    # LINK_ICON_BG      = "#E2E8F0"   # Link icon container background
+
+    # # ── Buttons ───────────────────────────────────────────────────────────────
+    # BTN_PRIMARY_BG    = "#0F172A"   # Primary button (high contrast dark slate)
+    # BTN_PRIMARY_HOVER = "#334155"   # Primary button hover
+    # BTN_ADD_BG        = "#E2E8F0"   # Add (+) button background
+    # BTN_ADD_HOVER     = "#CBD5E1"   # Add (+) button hover
+    # BTN_UPLOAD_BG     = "#E2E8F0"   # UPLOAD FAB background
+    # BTN_UPLOAD_HOVER  = "#CBD5E1"   # UPLOAD FAB hover
+    # BTN_UPLOAD_BORDER = "#94A3B8"   # UPLOAD FAB border
+
+    # # ── Text ──────────────────────────────────────────────────────────────────
+    # TEXT_PRIMARY      = "#0F172A"   # Main dark text (near black)
+    # TEXT_SECONDARY    = "#475569"   # Secondary/muted text
+    # TEXT_PLACEHOLDER  = "#94A3B8"   # Placeholder text in inputs
+    # TEXT_DISABLED     = "#CBD5E1"   # Disabled state text
+    # TEXT_ACCENT       = "#2563EB"   # Accent / highlighted text (strong blue)
+
+    # # ── Icons ─────────────────────────────────────────────────────────────────
+    # ICON_DEFAULT      = "#64748B"   # Default icon color
+    # ICON_ACTIVE       = "#2563EB"   # Active icon color
+    # ICON_FOLDER       = "#3B82F6"   # Folder icon
+
+    # # ── Borders & Dividers ────────────────────────────────────────────────────
+    # BORDER_DEFAULT    = "#CBD5E1"   # Default border/divider
+    # BORDER_FOCUS      = "#3B82F6"   # Focused input border
+    # BORDER_SUBTLE     = "#E2E8F0"   # Very subtle border
+
+    # # ── Scrollbar ─────────────────────────────────────────────────────────────
+    # SCROLLBAR_BG      = "#F8FAFC"
+    # SCROLLBAR_HANDLE  = "#CBD5E1"
+    # SCROLLBAR_HOVER   = "#94A3B8"
+
+    # # ── State Colors ──────────────────────────────────────────────────────────
+    # SUCCESS           = "#059669"   # Success green (slightly darker for light bg)
+    # WARNING           = "#D97706"   # Warning amber
+    # ERROR             = "#DC2626"   # Error red
+    # INFO              = "#2563EB"   # Info blue

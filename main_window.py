@@ -52,9 +52,9 @@ class MainWindow(QMainWindow):
 
     def _start_voice_sample_worker(self) -> None:
         """Generate missing voice samples once at startup in background."""
-        from pathlib import Path
         from core.audio_generator import VOICES
-        samples_dir = Path("assets") / "voice_samples"
+        from core.paths import get_voice_samples_dir
+        samples_dir = get_voice_samples_dir()
         # Check if any samples are missing
         missing = [
             k for k in VOICES

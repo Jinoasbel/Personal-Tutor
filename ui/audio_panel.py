@@ -269,22 +269,50 @@ class ReadyView(QWidget):
     # ── Player setup ───────────────────────────────────────────────────────────
 
     def _setup_player(self) -> None:
-        self._player = QMediaPlayer(self)
+        self._player   = QMediaPlayer(self)
+        self._volume   = 0.8
+        self._audio_out: QAudioOutput | None = None
 
-        # Use system default audio output — works for headphones too
-        default_device = QMediaDevices.defaultAudioOutput()
-        self._audio_out = QAudioOutput(default_device, self)
-        self._audio_out.setVolume(0.8)
-        self._player.setAudioOutput(self._audio_out)
+        self._attach_audio_output()
 
         self._player.playbackStateChanged.connect(self._on_state_changed)
         self._player.positionChanged.connect(self._on_pos_changed)
         self._player.durationChanged.connect(self._on_dur_changed)
 
+        # Watch for device changes (headphone plug/unplug)
+        self._media_devices = QMediaDevices(self)
+        self._media_devices.audioOutputsChanged.connect(self._on_audio_device_changed)
+
         self._seek_timer = QTimer(self)
         self._seek_timer.setInterval(400)
         self._seek_timer.timeout.connect(self._sync_seek)
         self._seek_timer.start()
+
+    def _attach_audio_output(self) -> None:
+        """Create a fresh QAudioOutput on the current default device and attach it."""
+        was_playing = (
+            self._player.playbackState() == QMediaPlayer.PlaybackState.PlayingState
+        )
+        position = self._player.position()
+
+        new_out = QAudioOutput(QMediaDevices.defaultAudioOutput(), self)
+        new_out.setVolume(self._volume)
+        self._player.setAudioOutput(new_out)
+
+        # Keep the old one alive briefly then replace
+        old_out = self._audio_out
+        self._audio_out = new_out
+        if old_out:
+            old_out.deleteLater()
+
+        # Resume from same position if it was playing
+        if was_playing and self._player.source().isValid():
+            self._player.setPosition(position)
+            self._player.play()
+
+    def _on_audio_device_changed(self) -> None:
+        """Called when headphones are plugged/unplugged — re-attach to new default."""
+        self._attach_audio_output()
 
     def _setup_watcher(self) -> None:
         self._watcher = QFileSystemWatcher(self)
@@ -389,15 +417,19 @@ class ReadyView(QWidget):
         self._time_lbl.setText(f"{fmt(pos)} / {fmt(dur)}")
 
     def _on_volume(self, value: int) -> None:
-        self._audio_out.setVolume(value / 100.0)
+        self._volume = value / 100.0
+        if self._audio_out:
+            self._audio_out.setVolume(self._volume)
 
 
 
 # ── Voice Selector Widget ──────────────────────────────────────────────────────
 
-SAMPLES_DIR = (
-    __import__('pathlib').Path(__file__).parent.parent / "assets" / "voice_samples"
-)
+from core.paths import get_voice_samples_dir as _get_voice_samples_dir
+from pathlib import Path as _Path
+
+def _samples_dir() -> _Path:
+    return _get_voice_samples_dir()
 
 
 class VoicePopup(QWidget):
@@ -435,6 +467,19 @@ class VoicePopup(QWidget):
             self._rows[key] = row
             root.addWidget(row)
 
+        # Re-route player when headphones plugged/unplugged
+        self._media_devices = QMediaDevices(self)
+        self._media_devices.audioOutputsChanged.connect(self._on_device_changed)
+
+    def _on_device_changed(self) -> None:
+        if self._current_player and self._current_audio:
+            new_out = QAudioOutput(QMediaDevices.defaultAudioOutput(), self)
+            new_out.setVolume(0.9)
+            self._current_player.setAudioOutput(new_out)
+            old_out = self._current_audio
+            self._current_audio = new_out
+            old_out.deleteLater()
+
     def _on_selected(self, voice_key: str) -> None:
         for k, r in self._rows.items():
             r.set_checked(k == voice_key)
@@ -459,9 +504,9 @@ class VoicePopup(QWidget):
                 return   # toggled off
 
         # Find sample file — WAV preferred (MP3 may be corrupt)
-        sample = SAMPLES_DIR / f"{voice_key}.wav"
+        sample = _samples_dir() / f"{voice_key}.wav"
         if not sample.exists():
-            sample = SAMPLES_DIR / f"{voice_key}.mp3"
+            sample = _samples_dir() / f"{voice_key}.mp3"
         if not sample.exists():
             return
 

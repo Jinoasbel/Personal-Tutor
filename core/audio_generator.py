@@ -12,6 +12,13 @@ Install:
 """
 
 from __future__ import annotations
+
+import logging as _logging_guard
+if not _logging_guard.root.handlers:
+    _logging_guard.root.addHandler(_logging_guard.NullHandler())
+if _logging_guard.lastResort is None:
+    _logging_guard.lastResort = _logging_guard.StreamHandler()
+del _logging_guard
 import logging
 import re
 from pathlib import Path
@@ -51,8 +58,16 @@ class AudioGenerator:
             from kokoro import KPipeline
         except ImportError:
             raise RuntimeError(
-                "Kokoro not installed. Run: pip install kokoro soundfile pydub"
+                "Kokoro not installed. Run: pip install kokoro soundfile"
             )
+
+        # Suppress Kokoro / huggingface loggers that crash when frozen
+        # (they try to log to NoneType handlers inside PyInstaller bundles)
+        import logging
+        for noisy in ("kokoro", "phonemizer", "transformers",
+                      "huggingface_hub", "filelock"):
+            logging.getLogger(noisy).setLevel(logging.ERROR)
+            logging.getLogger(noisy).propagate = False
 
         cache        = Path.home() / ".cache" / "huggingface"
         model_exists = any(cache.rglob("kokoro*")) if cache.exists() else False
